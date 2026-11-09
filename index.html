@@ -193,7 +193,12 @@ nav button.on{color:var(--accent)}
       <div class="panel">
         <div class="label">Color wheel · circle of fifths</div>
         <svg class="wheel" id="wheel" viewBox="-110 -110 220 220"></svg>
-        <p class="note">Neighbors on the wheel are a fifth apart and share similar colors. Notes a half step apart sit almost opposite each other. Every octave of a note has the same color, and the colors never change.</p>
+        <div class="seg" id="wkDir" style="margin-top:12px"><button data-v="cw" class="on">Fifths ↻</button><button data-v="ccw">Fourths ↺</button></div>
+        <div class="seg" id="wkKind" style="margin-top:8px"><button data-v="note" class="on">Notes</button><button data-v="chord">Chords</button></div>
+        <div class="label" style="margin-top:12px">Speed · <span id="wkSpdLbl"></span></div>
+        <input type="range" id="wkSpd" min="0.6" max="4" step="0.1" value="2" style="width:100%">
+        <button class="btn primary" style="width:100%;margin-top:10px" id="wkBtn">Walk the wheel</button>
+        <p class="note">Walk the wheel plays each slice in turn, as a note or a major chord, in the octave set above. Neighbors on the wheel are a fifth apart and share similar colors. Notes a half step apart sit almost opposite each other. Every octave of a note has the same color, and the colors never change.</p>
       </div>
     </div>
 
@@ -369,34 +374,41 @@ const MODES=[
   {n:'lydian',s:[0,2,4,6,7,9,11],pent:[0,2,4,7,9],prog:[[0,1,0,1],[0,1,4,0]]},
   {n:'harmonic minor',s:[0,2,3,5,7,8,11],pent:[0,3,5,7,10],prog:[[0,3,4,0],[0,5,4,4]]}];
 const CELLS=[[1],[0.5,0.5],[1.5,0.5],[0.75,0.25],[2],[0.5,1,0.5],[0.25,0.25,0.5],[1,1],[0.5,0.25,0.25],[1,0.5,0.5]];
-function scramble(){ // random key and tempo; a real progression with a melody that targets chord tones on strong beats
+function harmony(slots){ // one chord per two-beat slot; half modal progressions, half circle-of-fifths motion
+  const root=rnd(12),tri=(sc,dg)=>[0,2,4].map(k=>(root+sc[(dg+k)%7])%12);let list;
+  if(Math.random()<0.5){const M=MODES[rnd(MODES.length)],prog=M.prog[rnd(M.prog.length)],mel=(Math.random()<0.4?M.pent:M.s).map(x=>(root+x)%12);
+    list=prog.flatMap(dg=>{const c={pcs:tri(M.s,dg),scale:mel};return[c,c];});}
+  else{const minor=Math.random()<0.35,sc=minor?MODES[1].s:MODES[0].s,ks=sc.map(x=>(root+x)%12),kind=rnd(3);
+    if(kind<2){ // diatonic cycle down by fifths, or ii V I chains
+      const seq=kind===0?[0,3,6,2,5,1,4,0]:[1,4,0,5,1,4,0,0];list=seq.map(dg=>({pcs:tri(sc,dg),scale:ks}));}
+    else{ // chain of dominant sevenths, each resolving down a fifth, landing on the tonic
+      const offs=[4,9,2,7,0];list=offs.map((o,i)=>{const r=(root+o)%12,last=i===offs.length-1;
+        return{pcs:last?[r,(r+(minor?3:4))%12,(r+7)%12]:[r,(r+4)%12,(r+7)%12,(r+10)%12],scale:last?ks:[0,2,4,5,7,9,10].map(x=>(r+x)%12)};});}}
+  let full=list.slice();while(full.length<slots)full=list.concat(full);return full.slice(full.length-slots);}
+function scramble(){ // random key and tempo; progressions with a melody that targets chord tones on the beat
   const c=ac();let t=c.currentTime+0.12;if(!W)pickWin();
-  const p=pool(),phr=CLEAR[D.settings.clear]||3,beat=60/(100+rnd(50)),root=rnd(12),M=MODES[rnd(MODES.length)];
-  const prog=M.prog[rnd(M.prog.length)],usePent=Math.random()<0.4;
-  const mel=(usePent?M.pent:M.s).map(x=>(root+x)%12);
+  const p=pool(),phr=CLEAR[D.settings.clear]||3,beat=60/(100+rnd(50)),bars=phr*2,slots=harmony(bars*2);
   const lo=Math.max(52,W.start-5),hi=Math.min(91,W.start+12*W.n+5);
-  const deg=[];for(let m=lo;m<=hi;m++)if(mel.includes(m%12))deg.push(m);
   const detune=f=>Math.random()<0.12?f*Math.pow(2,(Math.random()<.5?-1:1)*(8+Math.random()*17)/1200):f;
-  const nearPool=m=>{let best=m,bd=99;for(let x=m-6;x<=m+6;x++)if(p.includes(((x%12)+12)%12)&&Math.abs(x-m)<bd){bd=Math.abs(x-m);best=x;}return best;};
-  const nearest=(m,pcs)=>{let best=m,bd=99;for(let x=m-7;x<=m+7;x++)if(x>=lo&&x<=hi&&pcs.includes(((x%12)+12)%12)&&Math.abs(x-m)<bd){bd=Math.abs(x-m);best=x;}return best;};
-  let cur=deg[rnd(deg.length)];
-  const bars=phr*2;
+  const nearIn=(m,pcs,span=7)=>{let best=null,bd=99;for(let x=m-span;x<=m+span;x++)if(x>=lo&&x<=hi&&pcs.includes(((x%12)+12)%12)&&Math.abs(x-m)<bd){bd=Math.abs(x-m);best=x;}return best??m;};
+  let cur=lo+rnd(hi-lo+1);
   for(let bar=0;bar<bars;bar++){
-    const dg=prog[bar%prog.length],chordPcs=[0,2,4].map(k=>(root+M.s[(dg+k)%7])%12);
-    const bass=36+((chordPcs[0]-36)%12+12)%12+(Math.random()<.5?12:0);
-    tone(mfreq(bass),beat*4+0.5,t,0.13,true);                       // bass note
-    chordPcs.slice(1).forEach(pc=>{const m=bass+12+((pc-bass)%12+12)%12;tone(detune(mfreq(m)),beat*4+0.4,t+0.02,0.08,true);});
-    let b=0;
-    while(b<4){let cell=CELLS[rnd(CELLS.length)];const len=cell.reduce((x,y)=>x+y,0);if(b+len>4)cell=[4-b];
-      const rest=b>0&&Math.random()<0.12;
-      cell.forEach(d=>{if(!rest){const strong=Math.abs(b-Math.round(b))<0.01&&(Math.round(b)%2===0);
-          let target;
-          if(strong)target=nearest(cur+(rnd(5)-2),chordPcs);       // land on a chord tone
-          else{const i=deg.indexOf(nearest(cur,mel));const step=Math.random()<0.8?(rnd(2)?1:-1):(rnd(2)?2:-2);
-            target=deg[Math.max(0,Math.min(deg.length-1,(i<0?rnd(deg.length):i)+step))];
-            if(Math.random()<0.25)target=nearPool(target);}         // weave in the quiz notes
-          cur=target;tone(detune(mfreq(cur)),Math.max(0.3,d*beat*1.5),t,0.26,true);}
-        t+=d*beat;b+=d;});}
+    for(let h=0;h<2;h++){const i=bar*2+h,ch=slots[i];
+      if(i===0||slots[i-1]!==ch){let len=1;while(i+len<slots.length&&slots[i+len]===ch)len++;
+        const dur=len*2*beat+0.4,bass=36+((ch.pcs[0]-36)%12+12)%12+(Math.random()<.5?12:0);
+        tone(mfreq(bass),dur,t,0.13,true);
+        ch.pcs.slice(1).forEach(pc=>tone(detune(mfreq(bass+12+((pc-bass)%12+12)%12)),dur,t+0.02,0.075,true));}
+      const scaleNotes=[];for(let m=lo;m<=hi;m++)if(ch.scale.includes(m%12))scaleNotes.push(m);
+      let b=0;
+      while(b<2){let cell=CELLS[rnd(CELLS.length)];if(b+cell.reduce((x,y)=>x+y,0)>2)cell=[2-b];
+        const rest=b>0&&Math.random()<0.12;
+        cell.forEach(d=>{if(!rest){let m;
+            if(b===0)m=nearIn(cur+rnd(5)-2,ch.pcs);                       // chord tone on the beat
+            else{const j=scaleNotes.indexOf(nearIn(cur,ch.scale));const st=Math.random()<0.8?(rnd(2)?1:-1):(rnd(2)?2:-2);
+              m=scaleNotes[Math.max(0,Math.min(scaleNotes.length-1,(j<0?rnd(scaleNotes.length):j)+st))];
+              if(Math.random()<0.25)m=nearIn(m,p,6);}                     // weave in the quiz notes
+            cur=m;tone(detune(mfreq(m)),Math.max(0.3,d*beat*1.5),t,0.26,true);}
+          t+=d*beat;b+=d;});}}
     if(bar%2===1&&bar<bars-1)t+=beat*(0.25+Math.random()*0.5);}
   return (t+0.5-c.currentTime)*1000;}
 async function clearEar(tok){setOrb({state:'clearing'});msg('Clearing your ear…');hideCircles();hideReveal();hideScale();
@@ -697,6 +709,21 @@ function buildWheel(){const s=$('wheel');let h='';const R=100,r=46;
   h+=`<text x="0" y="5" text-anchor="middle" style="fill:#8d8a84;font:500 10px JetBrains Mono">FIFTHS</text>`;
   s.innerHTML=h;s.querySelectorAll('path').forEach(p=>p.onclick=()=>{ac();const pc=+p.dataset.pc;exLast=pc;tone(fr(pc,exOct));flood(pc,exOct,1300);});}
 
+/* ================= learn: wheel walk ================= */
+const WK={on:false,id:0,i:0,dir:'cw',kind:'note',spd:2};
+function wkLbl(){$('wkSpdLbl').textContent=WK.spd.toFixed(1)+' seconds per step';}
+function wkMark(pc){$('wheel').querySelectorAll('path').forEach(p=>{const on=+p.dataset.pc===pc;p.style.strokeWidth=on?6:2;p.style.stroke=on?'#fff':'';});}
+function wkStep(){if(!WK.on)return;const pc=FIFTHS[((WK.i%12)+12)%12],base=12*(exOct+1)+pc;
+  if(WK.kind==='chord'){[0,4,7].forEach(iv=>tone(mfreq(base+iv),Math.max(1.2,WK.spd*0.9),null,0.3));}else tone(mfreq(base),Math.max(1.2,WK.spd*0.9));
+  flood(pc,exOct,Math.min(1300,WK.spd*600));wkMark(pc);exLast=pc;
+  WK.i+=WK.dir==='cw'?1:-1;WK.id=setTimeout(wkStep,WK.spd*1000);}
+function wkStop(){WK.on=false;clearTimeout(WK.id);$('wkBtn').textContent='Walk the wheel';wkMark(-1);}
+$('wkBtn').onclick=()=>{if(WK.on){wkStop();return;}ac();WK.on=true;WK.i=Math.max(0,FIFTHS.indexOf(exLast));$('wkBtn').textContent='Stop';wkStep();};
+$('wkSpd').oninput=e=>{WK.spd=+e.target.value;wkLbl();};
+['wkDir','wkKind'].forEach(id=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(id==='wkDir')WK.dir=b.dataset.v;else WK.kind=b.dataset.v;}));
+wkLbl();
+
 /* ================= learn: spotlight ================= */
 let spSel=null,spOn=false;
 function renderSpot(){if(!spSel)spSel=lvlNotes(D.level).slice(-3);
@@ -730,7 +757,7 @@ $('hdBtn').onclick=async()=>{if(hdOn){holdStop();return;}ac();
 
 function setLearn(v){$('learnSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   $('lExplore').style.display=v==='explore'?'':'none';$('lSpot').style.display=v==='spot'?'':'none';$('lHold').style.display=v==='hold'?'':'none';
-  if(v!=='spot'&&spOn)spStop();if(v!=='hold'&&hdOn)holdStop();if(v==='spot')renderSpot();if(v==='hold')renderHoldPick();}
+  if(v!=='spot'&&spOn)spStop();if(v!=='hold'&&hdOn)holdStop();if(v!=='explore'&&WK.on)wkStop();if(v==='spot')renderSpot();if(v==='hold')renderHoldPick();}
 $('learnSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>setLearn(b.dataset.v));
 
 /* ================= progress ================= */
@@ -763,7 +790,7 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+b.dataset.v));
   if(b.dataset.v!=='train'&&$('sess').style.display!=='none'){cancelAll();closeMic();showSess(false);renderHome();}
-  if(b.dataset.v!=='learn'){if(spOn)spStop();if(hdOn)holdStop();}
+  if(b.dataset.v!=='learn'){if(spOn)spStop();if(hdOn)holdStop();if(WK.on)wkStop();}
   if(b.dataset.v==='prog')renderProg();window.scrollTo(0,0);});
 
 renderHome();renderExplore();buildWheel();
