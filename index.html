@@ -66,6 +66,14 @@ nav button.on{color:var(--accent)}
 .cb:active{transform:scale(.93)}.cb.right{border-color:#fff}.cb.wrong{border-color:var(--bad);border-style:dashed}
 .meter{display:none;width:70%;height:10px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);overflow:hidden;margin-top:12px}
 .meter.on{display:block}.meter i{display:block;height:100%;width:0;background:var(--good);transition:width .05s}
+.cscale{display:none;width:100%;max-width:340px;margin-top:14px}
+.cscale.on{display:block}
+.cscale .track{position:relative;height:30px;border-radius:7px;background:var(--panel2);border:1px solid var(--line)}
+.cscale .zone{position:absolute;left:37.5%;width:25%;top:0;bottom:0;background:rgba(95,211,138,.16)}
+.cscale .mid{position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--text)}
+.cscale .mk{position:absolute;top:4px;bottom:4px;width:8px;margin-left:-4px;border-radius:4px;background:var(--accent);left:50%;transition:left .08s}
+.cscale .lbl{display:flex;justify-content:space-between;font:500 10px var(--mono);color:var(--dim);margin-top:4px}
+.cscale .rd{text-align:center;font:600 13px var(--mono);margin-top:6px}
 .ctl{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px;min-height:4px}
 /* keyboard */
 .kb{position:relative;height:140px;margin-top:12px;user-select:none;width:100%}
@@ -151,6 +159,8 @@ nav button.on{color:var(--accent)}
           <div class="orb neutral" id="orb"><div class="big">·</div><div class="sub"></div></div>
           <div class="msg" id="msg"></div>
           <div class="meter" id="meter"><i></i></div>
+          <div class="cscale" id="cscale"><div class="track"><div class="zone"></div><div class="mid"></div><div class="mk" id="cmk"></div></div>
+            <div class="lbl"><span>50 flat</span><span id="clab">target</span><span>50 sharp</span></div><div class="rd" id="crd"></div></div>
           <div class="circles" id="circles"></div>
           <div class="kb hide" id="kbRev"></div>
           <div class="ctl" id="ctl"></div>
@@ -289,9 +299,10 @@ const KEY='chroma-v1';
 function fresh(){return{level:1,recent:[],
   notes:Array.from({length:12},()=>({a:0,c:0,r:[]})),confusion:Array.from({length:12},()=>Array(12).fill(0)),
   days:{},first:{a:0,c:0},comeback:{a:0,c:0},sing:{a:0,on:0,close:0,cents:0,cn:0},recall:{a:0,on:0},lastQ:0,micOK:false,
-  custom:{notes:[0,7],octs:1,drill:'blind'},settings:{hz:'off',voice:'low',clear:'intense',vol:0.85}};}
+  custom:{notes:[0,7],octs:1,drill:'blind'},settings:{hz:'on',voice:'low',clear:'intense',vol:0.85,v2:true}};}
 let D;try{D=JSON.parse(localStorage.getItem(KEY))||fresh();}catch(e){D=fresh();}
 D=Object.assign(fresh(),D);D.settings=Object.assign(fresh().settings,D.settings);D.custom=Object.assign(fresh().custom,D.custom);
+if(!D.settings.v2){D.settings.hz='on';D.settings.v2=true;}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}}
 
 /* ================= audio out ================= */
@@ -301,18 +312,20 @@ function ac(){
     const comp=ctx.createDynamicsCompressor();master.connect(comp);comp.connect(ctx.destination);}
   if(ctx.state==='suspended')ctx.resume();return ctx;}
 let noiseBuf=null;
-function tone(f,dur=1.6,at=null,amp=0.45){ // additive piano-ish voice: stretched partials, two-stage decay, chorus layer, hammer thump
+function tone(f,dur=1.6,at=null,amp=0.45,soft=false){ // additive piano-ish voice: stretched partials, two-stage decay, chorus layer, hammer thump
   const c=ac(),t0=at??c.currentTime+0.03,g=c.createGain(),end=t0+dur;
   g.gain.setValueAtTime(amp,t0);g.gain.setValueAtTime(amp,end-0.12);g.gain.linearRampToValueAtTime(0,end);g.connect(master);
   const B=0.00035;
-  for(let n=1;n<=8;n++){const pf=n*f*Math.sqrt(1+B*n*n);if(pf>10000)break;
-    const a=0.55/Math.pow(n,1.25)*(f>800?Math.pow(0.8,n-1):1),layers=n<=3?[0,1.6]:[0];
+  const NP=soft?4:8;
+  for(let n=1;n<=NP;n++){const pf=n*f*Math.sqrt(1+B*n*n);if(pf>10000)break;
+    const a=(soft?0.62/Math.pow(n,1.9):0.55/Math.pow(n,1.25))*(f>800?Math.pow(0.8,n-1):1),layers=(!soft&&n<=3)?[0,1.6]:[0];
     layers.forEach((cents,li)=>{const o=c.createOscillator(),pg=c.createGain(),la=li?a*0.45:a;
       o.frequency.value=pf*Math.pow(2,cents/1200);
       pg.gain.setValueAtTime(0,t0);pg.gain.linearRampToValueAtTime(la,t0+0.005);
       pg.gain.exponentialRampToValueAtTime(la*0.38,t0+0.12+0.25/n);
       pg.gain.exponentialRampToValueAtTime(Math.max(la*0.0006,1e-5),t0+Math.max(0.35,dur*(n===1?1:1.6/n)));
       o.connect(pg);pg.connect(g);o.start(t0);o.stop(end+0.02);});}
+  if(soft)return (end-c.currentTime)*1000;
   if(!noiseBuf){noiseBuf=c.createBuffer(1,Math.floor(c.sampleRate*0.05),c.sampleRate);const ch=noiseBuf.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=Math.random()*2-1;}
   const ns=c.createBufferSource(),lp=c.createBiquadFilter(),ng=c.createGain();ns.buffer=noiseBuf;lp.type='lowpass';lp.frequency.value=Math.min(3000,Math.max(700,f*2.5));
   ng.gain.setValueAtTime(0.09,t0);ng.gain.exponentialRampToValueAtTime(0.001,t0+0.035);ns.connect(lp);lp.connect(ng);ng.connect(g);ns.start(t0);ns.stop(t0+0.05);
@@ -346,30 +359,47 @@ function wpick(p){ // weaker notes come up more often
 
 /* ================= ear clear ================= */
 const CLEAR={light:1,strong:2,intense:3}; // phrases of two bars each
-const SCALES=[[0,2,4,5,7,9,11],[0,2,3,5,7,8,10],[0,2,3,5,7,9,10],[0,2,4,5,7,9,10],[0,2,4,6,7,9,11],[0,2,3,5,7,8,11]];
-const CELLS=[[1],[0.5,0.5],[1.5,0.5],[0.75,0.25],[2],[0.5,1,0.5],[0.25,0.25,0.5],[1,1],[0.5,0.25,0.25]];
-function scramble(){ // random key, tempo and scale; rhythmic melody over held chords, with the quiz notes and detuned notes woven in
+// modes for harmony; each has typical progressions (scale degrees, 0 = tonic)
+const MODES=[
+  {n:'major',s:[0,2,4,5,7,9,11],pent:[0,2,4,7,9],prog:[[0,4,5,3],[1,4,0,5],[0,5,3,4],[3,0,4,5],[5,3,0,4]]},
+  {n:'minor',s:[0,2,3,5,7,8,10],pent:[0,3,5,7,10],prog:[[0,5,2,6],[0,3,6,2],[0,6,5,6],[0,3,4,0],[5,6,0,0]]},
+  {n:'dorian',s:[0,2,3,5,7,9,10],pent:[0,3,5,7,10],prog:[[0,3,0,3],[0,1,3,0],[0,6,3,0]]},
+  {n:'phrygian',s:[0,1,3,5,7,8,10],pent:[0,3,5,7,10],prog:[[0,1,0,6],[0,1,2,1],[0,6,5,1]]},
+  {n:'mixolydian',s:[0,2,4,5,7,9,10],pent:[0,2,4,7,9],prog:[[0,6,3,0],[0,4,6,3]]},
+  {n:'lydian',s:[0,2,4,6,7,9,11],pent:[0,2,4,7,9],prog:[[0,1,0,1],[0,1,4,0]]},
+  {n:'harmonic minor',s:[0,2,3,5,7,8,11],pent:[0,3,5,7,10],prog:[[0,3,4,0],[0,5,4,4]]}];
+const CELLS=[[1],[0.5,0.5],[1.5,0.5],[0.75,0.25],[2],[0.5,1,0.5],[0.25,0.25,0.5],[1,1],[0.5,0.25,0.25],[1,0.5,0.5]];
+function scramble(){ // random key and tempo; a real progression with a melody that targets chord tones on strong beats
   const c=ac();let t=c.currentTime+0.12;if(!W)pickWin();
-  const p=pool(),phr=CLEAR[D.settings.clear]||3,beat=60/(100+rnd(50)),root=rnd(12),sc=SCALES[rnd(SCALES.length)];
-  const lo=Math.max(48,W.start-5),hi=Math.min(91,W.start+12*W.n+5);
-  const deg=[];for(let m=lo;m<=hi;m++)if(sc.includes(((m-root)%12+12)%12))deg.push(m);
-  const detune=f=>Math.random()<0.25?f*Math.pow(2,(Math.random()<.5?-1:1)*(15+Math.random()*35)/1200):f;
+  const p=pool(),phr=CLEAR[D.settings.clear]||3,beat=60/(100+rnd(50)),root=rnd(12),M=MODES[rnd(MODES.length)];
+  const prog=M.prog[rnd(M.prog.length)],usePent=Math.random()<0.4;
+  const mel=(usePent?M.pent:M.s).map(x=>(root+x)%12);
+  const lo=Math.max(52,W.start-5),hi=Math.min(91,W.start+12*W.n+5);
+  const deg=[];for(let m=lo;m<=hi;m++)if(mel.includes(m%12))deg.push(m);
+  const detune=f=>Math.random()<0.12?f*Math.pow(2,(Math.random()<.5?-1:1)*(8+Math.random()*17)/1200):f;
   const nearPool=m=>{let best=m,bd=99;for(let x=m-6;x<=m+6;x++)if(p.includes(((x%12)+12)%12)&&Math.abs(x-m)<bd){bd=Math.abs(x-m);best=x;}return best;};
-  let idx=rnd(deg.length);
-  for(let ph=0;ph<phr;ph++){
-    for(let bar=0;bar<2;bar++){
-      const cr=rnd(6),bassRoot=Math.max(36,lo-12);   // chord on a random scale degree, held under the bar
-      [0,2,4].forEach(k=>{const iv=sc[(cr+k)%7]+(cr+k>=7?12:0);let m=bassRoot+((root+iv-bassRoot)%12+12)%12+(k?12:0);
-        tone(detune(mfreq(m)),beat*4+0.6,t,0.12);});
-      let b=0;while(b<4){const cell=CELLS[rnd(CELLS.length)];if(b+cell.reduce((x,y)=>x+y,0)>4){const left=4-b;b+=left;t+=left*beat;break;}
-        const rest=Math.random()<0.12;
-        cell.forEach(d=>{if(!rest){idx=Math.max(0,Math.min(deg.length-1,idx+(Math.random()<0.75?(rnd(2)?1:-1)*(1+rnd(2)):rnd(9)-4)));
-            let m=deg[idx];if(Math.random()<0.35)m=nearPool(m);
-            tone(detune(mfreq(m)),Math.max(0.35,d*beat*1.6),t,0.3);}
-          t+=d*beat;b+=d;});}}
-    t+=beat*(0.25+Math.random()*0.5);}
+  const nearest=(m,pcs)=>{let best=m,bd=99;for(let x=m-7;x<=m+7;x++)if(x>=lo&&x<=hi&&pcs.includes(((x%12)+12)%12)&&Math.abs(x-m)<bd){bd=Math.abs(x-m);best=x;}return best;};
+  let cur=deg[rnd(deg.length)];
+  const bars=phr*2;
+  for(let bar=0;bar<bars;bar++){
+    const dg=prog[bar%prog.length],chordPcs=[0,2,4].map(k=>(root+M.s[(dg+k)%7])%12);
+    const bass=36+((chordPcs[0]-36)%12+12)%12+(Math.random()<.5?12:0);
+    tone(mfreq(bass),beat*4+0.5,t,0.13,true);                       // bass note
+    chordPcs.slice(1).forEach(pc=>{const m=bass+12+((pc-bass)%12+12)%12;tone(detune(mfreq(m)),beat*4+0.4,t+0.02,0.08,true);});
+    let b=0;
+    while(b<4){let cell=CELLS[rnd(CELLS.length)];const len=cell.reduce((x,y)=>x+y,0);if(b+len>4)cell=[4-b];
+      const rest=b>0&&Math.random()<0.12;
+      cell.forEach(d=>{if(!rest){const strong=Math.abs(b-Math.round(b))<0.01&&(Math.round(b)%2===0);
+          let target;
+          if(strong)target=nearest(cur+(rnd(5)-2),chordPcs);       // land on a chord tone
+          else{const i=deg.indexOf(nearest(cur,mel));const step=Math.random()<0.8?(rnd(2)?1:-1):(rnd(2)?2:-2);
+            target=deg[Math.max(0,Math.min(deg.length-1,(i<0?rnd(deg.length):i)+step))];
+            if(Math.random()<0.25)target=nearPool(target);}         // weave in the quiz notes
+          cur=target;tone(detune(mfreq(cur)),Math.max(0.3,d*beat*1.5),t,0.26,true);}
+        t+=d*beat;b+=d;});}
+    if(bar%2===1&&bar<bars-1)t+=beat*(0.25+Math.random()*0.5);}
   return (t+0.5-c.currentTime)*1000;}
-async function clearEar(tok){setOrb({state:'clearing'});msg('Clearing your ear…');hideCircles();hideReveal();
+async function clearEar(tok){setOrb({state:'clearing'});msg('Clearing your ear…');hideCircles();hideReveal();hideScale();
   const ms=scramble();await sleep(tok,ms+700+Math.random()*1200);}
 
 /* ================= mic + pitch detection ================= */
@@ -517,6 +547,10 @@ async function singQ(tok,t,m){
   if(f==='nomic')return 'nomic';
   return await singResult(tok,f,t,m,'sing');}
 
+function showScale(cents,label,t){const el=$('cscale');el.classList.add('on');
+  $('cmk').style.left=Math.max(1,Math.min(99,50+cents))+'%';$('clab').textContent=label;
+  const a=Math.abs(cents);$('crd').innerHTML=`<span class="${a<=25?'good':a<=50?'warn':'bad'}">${a===0?'dead on':a>50?'about '+(Math.round(a/50)/2)+' half steps '+(cents>0?'sharp':'flat'):a+' cents '+(cents>0?'sharp':'flat')}</span>`;}
+function hideScale(){$('cscale').classList.remove('on');}
 async function singResult(tok,f,t,m,kind){
   const oct=Math.floor(m/12)-1;
   if(!f){setOrb({big:'–'});msg("Didn't catch a steady note. Moving on.");await sleep(tok,1500);return null;}
@@ -524,14 +558,33 @@ async function singResult(tok,f,t,m,kind){
   const g=grade(f,t);
   const st=kind==='recall'?D.recall:D.sing;st.a++;if(g.status==='on'){st.on++;}
   if(kind!=='recall'){if(g.status==='close')D.sing.close++;if(g.status!=='off'){D.sing.cents+=Math.abs(g.toT);D.sing.cn++;}}
-  if(!S.custom||true){S.sn++;if(g.status==='on')S.son++;}save();
-  flood(g.pc,g.oct,1300);setOrb({pc:g.pc,big:lab(g.pc,g.oct)});
+  S.sn++;if(g.status==='on')S.son++;save();
+  flood(g.pc,g.oct,1300);setOrb({pc:g.pc,big:lab(g.pc,g.oct),sub:hzTxt(g.pc,g.oct)});
   const word={on:'<span class="good">On it.</span>',close:'<span class="warn">Close.</span>',off:'<span class="bad">Off.</span>'}[g.status];
-  const dir=g.toT===0?'dead on':`${Math.abs(g.toT)} cents ${g.toT>0?'sharp':'flat'}`;
-  msg(`${word} You sang <b>${NAMES[g.pc]}${g.oct}</b>, ${dir} of ${NAMES[t]}.`);
-  await sleep(tok,2600);
+  msg(`${word} You sang <b>${NAMES[g.pc]}${g.oct}</b>. Target: ${NAMES[t]}.`);
+  showScale(g.toT,NAMES[t],t);
+  await sleep(tok,4500);
   tone(mfreq(m));flood(t,oct,1300);reveal(t,m,null);setOrb({pc:t,big:lab(t,oct),sub:hzTxt(t,oct)});
-  msg(`The note was <b>${NAMES[t]}${oct}</b>.`);await sleep(tok,3200);hideReveal();return g;}
+  msg(`The note was <b>${NAMES[t]}${oct}</b>${D.settings.hz==='on'?' · '+fr(t,oct).toFixed(1)+' Hz':''}.`);
+  await sleep(tok,1800);
+  const v=await choose(tok,[{v:'center',l:'Find the center',p:g.status!=='on'},{v:'next',l:'Next',p:g.status==='on'}]);
+  if(v==='center')await findCenter(tok,t,m);
+  hideScale();hideReveal();return g;}
+async function findCenter(tok,t,m){ // live needle toward the target; stops once you hold the center
+  const oct=Math.floor(m/12)-1;setOrb({pc:t,big:lab(t,oct),sub:hzTxt(t,oct)});
+  if(!await openMic()){msg(NOMIC);await sleep(tok,2000);return;}
+  msg(`Sing <b>${NAMES[t]}${oct}</b> and move the marker to the center.`);showScale(0,NAMES[t]+oct,t);$('crd').textContent='listening…';
+  const stop={v:false};const el=$('ctl');el.innerHTML='<button class="btn">Done</button>';el.firstElementChild.onclick=()=>{stop.v=true;};
+  let hist=[],held=0;
+  try{await new Promise((res,rej)=>{const iv=setInterval(()=>{if(tok!==S.tok){clearInterval(iv);return rej(CANCEL);}
+      const r=readPitch();
+      if(r.f&&r.c>0.8&&r.f>70&&r.f<1100){hist.push(r.f);if(hist.length>5)hist.shift();
+        const f=hist.slice().sort((a,b)=>a-b)[hist.length>>1],g=grade(f,t);showScale(g.toT,NAMES[t]+oct,t);
+        if(Math.abs(g.toT)<=10){held++;if(held>=20){clearInterval(iv);un();msg(`<span class="good">Locked in.</span> That's ${NAMES[t]}${oct}.`);flood(t,oct,1000);return res();}}else held=0;}
+      if(stop.v){clearInterval(iv);un();return res();}},30);
+    const un=track(()=>{clearInterval(iv);rej(CANCEL);});});
+  }finally{el.innerHTML='';closeMic();}
+  await sleep(tok,1500);}
 
 const NOMIC="Mic not available, so singing is skipped. Check this site's microphone permission in your browser settings.";
 async function stSing(tok,n){
