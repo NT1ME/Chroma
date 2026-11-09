@@ -110,14 +110,18 @@ nav button.on{color:var(--accent)}
 .needle i{position:absolute;top:3px;bottom:3px;width:6px;margin-left:-3px;border-radius:3px;background:var(--accent);left:50%;transition:left .08s}
 .grid12{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 .cell{border-radius:9px;padding:8px 0;text-align:center;color:#0b0b0b}.cell .n{font-weight:700;font-size:14px}.cell .p{font-family:var(--mono);font-size:10.5px}
-.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .tile{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
-.tile .v{font-size:22px;font-weight:700}.tile .k{font-family:var(--mono);font-size:9.5px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-top:3px}
+.tile .v{font-size:19px;font-weight:700}.tile .k{font-family:var(--mono);font-size:9.5px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-top:3px}
 .days{display:flex;gap:6px;align-items:flex-end;height:90px}
 .days .d{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
 .days .col{width:100%;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px}
 .days .lab{font-family:var(--mono);font-size:9.5px;color:var(--dim)}
 .conf{font-size:14px;line-height:1.8}.sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.tbar{display:none;width:70%;height:5px;border-radius:3px;background:var(--panel2);overflow:hidden;margin:2px auto 6px}
+.tbar.on{display:block}.tbar i{display:block;height:100%;width:100%;background:var(--accent)}
+.cb.pill{width:auto;min-width:84px;height:48px;border-radius:24px;padding:0 16px;font-size:16px;background:var(--panel2);color:var(--text);border-color:var(--line)}
+.cb.pill.right{border-color:var(--good)}.cb.pill.wrong{border-color:var(--bad)}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:flex-end;justify-content:center;z-index:10}
 .modal.on{display:flex}
 .sheet{background:var(--panel);border:1px solid var(--line);border-radius:16px 16px 0 0;padding:18px 16px 28px;width:100%;max-width:560px;max-height:90vh;overflow:auto}
@@ -149,7 +153,8 @@ nav button.on{color:var(--accent)}
         <button class="btn" style="flex:1" id="quickBtn">Quick note</button>
         <button class="btn" style="flex:1" id="customBtn">Custom</button>
       </div>
-      <p class="note" style="margin-top:14px">A session runs about eight to ten minutes and mixes the drills for your level. Quick note is a single cold note for between lessons. It always counts as a first note, your purest score. Use headphones or your phone speaker in a quiet room, and turn off the silent switch.</p>
+      <p class="note" style="margin-top:14px">A session runs about eight to ten minutes and mixes the drills for your level. Quick note is a single cold note for between lessons. It always counts as a first note, your purest score. When you sing, sing the letter name itself on the pitch, like "D" on D. Turn off the silent switch.</p>
+      <p class="small-dim" id="pianoStat"></p>
     </div>
 
     <div id="sess" style="display:none">
@@ -161,6 +166,7 @@ nav button.on{color:var(--accent)}
           <div class="meter" id="meter"><i></i></div>
           <div class="cscale" id="cscale"><div class="track"><div class="zone"></div><div class="mid"></div><div class="mk" id="cmk"></div></div>
             <div class="lbl"><span>50 flat</span><span id="clab">target</span><span>50 sharp</span></div><div class="rd" id="crd"></div></div>
+          <div class="tbar" id="tbar"><i></i></div>
           <div class="circles" id="circles"></div>
           <div class="kb hide" id="kbRev"></div>
           <div class="ctl" id="ctl"></div>
@@ -238,9 +244,12 @@ nav button.on{color:var(--accent)}
         <div class="tile"><div class="v" id="pBack">–</div><div class="k">Comeback</div></div>
         <div class="tile"><div class="v" id="pSing">–</div><div class="k">Sung on pitch</div></div>
         <div class="tile"><div class="v" id="pCents">–</div><div class="k">Avg cents off</div></div>
-        <div class="tile"><div class="v" id="pRecall">–</div><div class="k">Recall</div></div>
+        <div class="tile"><div class="v" id="pRecall">–</div><div class="k">Color recall</div></div>
+        <div class="tile"><div class="v" id="pRT">–</div><div class="k">Answer time</div></div>
+        <div class="tile"><div class="v" id="pDir">–</div><div class="k">Misses lean</div></div>
+        <div class="tile"><div class="v" id="pMatch">–</div><div class="k">Match</div></div>
       </div>
-      <p class="note" style="margin-top:10px">First note counts only notes with nothing before them: session openers and quick notes. Comeback counts the first blind block after a break of three hours or more, so it shows what sticks. Sung on pitch means within a quarter of a half step, any octave.</p>
+      <p class="note" style="margin-top:10px">First note counts only notes with nothing before them: session openers and quick notes. Comeback counts the first blind block after a break of three hours or more, so it shows what sticks. Sung on pitch means within a quarter of a half step, any octave. Answer time is your typical time on correct answers; the best adult learners in research average about two seconds. Misses lean shows whether your wrong answers tend to land sharp or flat.</p>
     </div>
     <div class="panel"><div class="label">Last 7 days · naming accuracy</div><div class="days" id="pDays"></div></div>
     <div class="panel"><div class="label">By note · naming accuracy</div><div class="grid12" id="pNotes"></div></div>
@@ -263,7 +272,7 @@ nav button.on{color:var(--accent)}
   <div class="blk"><div class="label">Octave range</div>
     <div class="stepper"><button class="btn small" id="cuMinus">−</button><div class="v" id="cuOct"></div><button class="btn small" id="cuPlus">+</button></div></div>
   <div class="blk"><div class="label">Drill</div>
-    <div class="seg" id="cuDrill"><button data-v="feedback">Name, with answers</button><button data-v="blind">Name, blind</button><button data-v="sing">Sing it</button></div></div>
+    <div class="seg" id="cuDrill"><button data-v="feedback">Name, with answers</button><button data-v="blind">Name, blind</button><button data-v="sing">Sing the name</button><button data-v="match">Match</button></div></div>
   <div class="row"><button class="btn" style="flex:1" id="cuCancel">Cancel</button><button class="btn primary" style="flex:2" id="cuStart">Start</button></div>
   <p class="note">Custom practice counts toward your stats but not your level.</p>
 </div></div>
@@ -284,6 +293,7 @@ nav button.on{color:var(--accent)}
     <p class="note" id="syNote"></p></div>
   <div class="row"><button class="btn" id="sReset">Reset all progress</button><button class="btn primary" style="margin-left:auto" id="sClose">Done</button></div>
   <p class="note" id="resetNote"></p>
+  <p class="note" style="margin-top:14px">Piano samples: Salamander Grand Piano by Alexander Holm, licensed CC BY 3.0. Everything is tuned to A440.</p>
 </div></div>
 
 <script>
@@ -309,7 +319,7 @@ const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 const KEY='chroma-v1';
 function fresh(){return{level:1,recent:[],
   notes:Array.from({length:12},()=>({a:0,c:0,r:[]})),confusion:Array.from({length:12},()=>Array(12).fill(0)),
-  days:{},first:{a:0,c:0},comeback:{a:0,c:0},sing:{a:0,on:0,close:0,cents:0,cn:0},recall:{a:0,on:0},lastQ:0,micOK:false,
+  days:{},first:{a:0,c:0},comeback:{a:0,c:0},sing:{a:0,on:0,close:0,cents:0,cn:0},recall:{a:0,on:0},lastQ:0,micOK:false,dir:{sharp:0,flat:0},rt:[],match:{a:0,c:0},
   custom:{notes:[0,7],octs:1,drill:'blind'},settings:{hz:'on',voice:'low',clear:'intense',vol:0.85,v2:true}};}
 let D;try{D=JSON.parse(localStorage.getItem(KEY))||fresh();}catch(e){D=fresh();}
 D=Object.assign(fresh(),D);D.settings=Object.assign(fresh().settings,D.settings);D.custom=Object.assign(fresh().custom,D.custom);
@@ -321,14 +331,32 @@ let ctx,master;
 function ac(){
   if(!ctx){ctx=new (window.AudioContext||window.webkitAudioContext)();master=ctx.createGain();master.gain.value=D.settings.vol;
     const comp=ctx.createDynamicsCompressor();master.connect(comp);comp.connect(ctx.destination);}
-  if(ctx.state==='suspended')ctx.resume();return ctx;}
+  if(ctx.state==='suspended')ctx.resume();if(!PIANO.loading)setTimeout(loadPiano,0);return ctx;}
 let noiseBuf=null,busN=null;
+const PIANO={buf:{},list:[],loaded:false,loading:false};
+function loadPiano(){ // Salamander Grand Piano samples, one every minor third; in-between notes are repitched from the nearest
+  if(PIANO.loading)return;PIANO.loading=true;const c=ctx,PN={C:0,Ds:3,Fs:6,A:9},names=[];
+  for(let o=1;o<=7;o++)for(const n of ['C','Ds','Fs','A'])names.push([n+o,12*(o+1)+PN[n]]);
+  let done=0;pianoStat();
+  names.forEach(([nm,m])=>{fetch('piano/'+nm+'.mp3').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();})
+    .then(ab=>new Promise((res,rej)=>c.decodeAudioData(ab,res,rej))).then(b=>{PIANO.buf[m]=b;}).catch(()=>{})
+    .finally(()=>{done++;if(done===names.length){PIANO.list=Object.keys(PIANO.buf).map(Number).sort((a,b)=>a-b);PIANO.loaded=PIANO.list.length>=8;}pianoStat();});});}
+function pianoStat(){const el=document.getElementById('pianoStat');if(!el)return;
+  el.textContent=PIANO.loaded?'':PIANO.loading&&!PIANO.list.length&&Object.keys(PIANO.buf).length<28?'LOADING PIANO SOUND…':'';}
+function pianoNote(f,dur,at,amp){
+  const c=ctx,m=69+12*Math.log2(f/440);let best=PIANO.list[0];for(const x of PIANO.list)if(Math.abs(x-m)<Math.abs(best-m))best=x;
+  const src=c.createBufferSource(),g=c.createGain(),end=at+dur;src.buffer=PIANO.buf[best];src.playbackRate.value=Math.pow(2,(m-best)/12);
+  g.gain.setValueAtTime(amp*3.2,at);g.gain.setValueAtTime(amp*3.2,end);g.gain.setTargetAtTime(0,end,0.09);
+  src.connect(g);g.connect(bus());src.start(at);src.stop(end+0.7);
+  return (end-c.currentTime)*1000;}
 function bus(){if(!busN){busN=ctx.createGain();busN.connect(master);}return busN;}
 function hush(){ // cut every scheduled and ringing sound immediately
   if(busN&&ctx){const old=busN,now=ctx.currentTime;old.gain.cancelScheduledValues(now);old.gain.setValueAtTime(old.gain.value,now);old.gain.linearRampToValueAtTime(0,now+0.04);setTimeout(()=>{try{old.disconnect();}catch(e){}},120);busN=null;}
   clearTimeout(floodT);$('flood').classList.remove('on');}
 function tone(f,dur=1.6,at=null,amp=0.45,soft=false){ // additive piano-ish voice: stretched partials, two-stage decay, chorus layer, hammer thump
-  const c=ac(),t0=at??c.currentTime+0.03,g=c.createGain(),end=t0+dur;
+  const c=ac(),t0=at??c.currentTime+0.03;
+  if(PIANO.loaded)return pianoNote(f,dur,t0,amp*(soft?0.9:1));
+  const g=c.createGain(),end=t0+dur;
   g.gain.setValueAtTime(amp,t0);g.gain.setValueAtTime(amp,end-0.12);g.gain.linearRampToValueAtTime(0,end);g.connect(bus());
   const B=0.00035;
   const NP=soft?4:8;
@@ -364,8 +392,10 @@ const lvlOcts=l=>l<=11?1:l-10;
 const pool=()=>S.custom?D.custom.notes.slice():lvlNotes(D.level);
 const octCount=()=>S.custom?D.custom.octs:lvlOcts(D.level);
 let W=null; // {start:midi,n}
-function pickWin(){const n=octCount(),sp=rnd(12),minS=n===1?48:36,maxS=n===1?71:Math.max(minS+11,104-12*n),c=[];
-  for(let m=minS;m<=maxS;m++)if(m%12===sp)c.push(m);W={start:c[rnd(c.length)],n};}
+function pickWin(){ // octaves 4-5 centered; the first three levels stay in a narrow range
+  const n=octCount(),early=!S.custom&&D.level<=3;let minS,maxS;
+  if(n===1){minS=early?60:55;maxS=early?64:71;}else{minS=48;maxS=Math.max(minS+11,96-12*n);}
+  W={start:minS+rnd(maxS-minS+1),n};}
 function midiIn(pc){const ms=[];for(let m=W.start;m<W.start+12*W.n;m++)if(m%12===pc)ms.push(m);return ms[rnd(ms.length)];}
 function noteAcc(pc){const r=D.notes[pc].r;return r.length?mean(r):0.5;}
 function wpick(p){ // weaker notes come up more often
@@ -399,7 +429,7 @@ function scramble(){ // random key and tempo; progressions with a melody that ta
   const c=ac();let t=c.currentTime+0.12;if(!W)pickWin();
   const p=pool(),phr=CLEAR[D.settings.clear]||3,beat=60/(100+rnd(50)),bars=phr*2,slots=harmony(bars*2);
   const lo=Math.max(52,W.start-5),hi=Math.min(91,W.start+12*W.n+5);
-  const detune=f=>Math.random()<0.12?f*Math.pow(2,(Math.random()<.5?-1:1)*(8+Math.random()*17)/1200):f;
+  const detune=f=>f; // everything stays at A440; detuned exposure can shift note categories
   const nearIn=(m,pcs,span=7)=>{let best=null,bd=99;for(let x=m-span;x<=m+span;x++)if(x>=lo&&x<=hi&&pcs.includes(((x%12)+12)%12)&&Math.abs(x-m)<bd){bd=Math.abs(x-m);best=x;}return best??m;};
   let cur=lo+rnd(hi-lo+1);
   for(let bar=0;bar<bars;bar++){
@@ -420,9 +450,11 @@ function scramble(){ // random key and tempo; progressions with a melody that ta
             cur=m;tone(detune(mfreq(m)),Math.max(0.3,d*beat*1.5),t,0.26,true);}
           t+=d*beat;b+=d;});}}
     if(bar%2===1&&bar<bars-1)t+=beat*(0.25+Math.random()*0.5);}
+  const last=slots[slots.length-1],out=[...Array(12).keys()].filter(pc=>!last.scale.includes(pc)); // end unresolved, outside the key
+  for(let k=0,K=2+rnd(2);k<K;k++){const pc=out.length?out[rnd(out.length)]:rnd(12);cur=nearIn(cur+rnd(7)-3,[pc],8);tone(mfreq(cur),0.7,t,0.22,true);t+=beat*0.75;}
   return (t+0.5-c.currentTime)*1000;}
 async function clearEar(tok){setOrb({state:'clearing'});msg('Clearing your ear…');hideCircles();hideReveal();hideScale();
-  const ms=scramble();await sleep(tok,ms+700+Math.random()*1200);}
+  const ms=scramble();await sleep(tok,ms+1500+Math.random()*1500);}
 
 /* ================= mic + pitch detection ================= */
 let mic=null;
@@ -459,12 +491,16 @@ function capture(tok,stop,maxMs=20000){ // listens until a steady sung note, Don
       if(stop.v||performance.now()-t0>maxMs)finish();},30);
     const un=track(()=>{done();rej(CANCEL);});
     function done(){clearInterval(iv);un();meter.classList.remove('on');}});}
-async function punch(tok,prompt){ // tap to sing; mic is only on between punch-in and punch-out
-  msg(prompt);await choose(tok,[{v:1,l:'Tap to sing',p:1}]);
+async function listen(tok){ // mic is only on from here until punch-out
   if(!await openMic())return 'nomic';
-  setOrb({big:'Sing',state:'pulse'});msg('Listening… hold the note steady.');
+  setOrb2('Sing');msg('Listening… sing the letter name and hold it steady.');
   const stop={v:false};const el=$('ctl');el.innerHTML='<button class="btn">Done</button>';el.firstElementChild.onclick=()=>{stop.v=true;};
   try{const f=await capture(tok,stop);return f;}finally{el.innerHTML='';closeMic();}}
+async function punch(tok,prompt){msg(prompt);await choose(tok,[{v:1,l:'Tap to sing',p:1}]);return listen(tok);}
+function setOrb2(big){const o=$('orb');o.classList.add('pulse');if(!o.style.background){o.children[0].innerHTML=big;}}
+function chooseTimed(tok,btns,ms,def){return new Promise((res,rej)=>{let done=false;
+  const id=setTimeout(()=>{if(done)return;done=true;$('ctl').innerHTML='';un();res(def);},ms);const un=track(()=>clearTimeout(id));
+  choose(tok,btns).then(v=>{if(done)return;done=true;clearTimeout(id);un();res(v);},e=>{if(!done){done=true;rej(e);}});});}
 
 /* ================= UI helpers ================= */
 let floodT;
@@ -503,7 +539,7 @@ function showBanner(t){const b=$('banner');b.textContent=t;b.style.display='bloc
 function recordName(t,a,ok,first){
   const d=today();D.days[d]=D.days[d]||{a:0,c:0};D.days[d].a++;if(ok)D.days[d].c++;
   const n=D.notes[t];n.a++;if(ok)n.c++;n.r.push(ok?1:0);if(n.r.length>12)n.r.shift();
-  if(!ok)D.confusion[t][a]++;
+  if(!ok&&a>=0){D.confusion[t][a]++;const d=((a-t)%12+12)%12;if(d>=1&&d<=5)D.dir.sharp++;else if(d>=7)D.dir.flat++;}
   if(first){D.first.a++;if(ok)D.first.c++;}
   S.n++;if(ok)S.c++;
   if(!S.custom){D.recent.push(ok?1:0);if(D.recent.length>20)D.recent.shift();
@@ -512,20 +548,29 @@ function recordName(t,a,ok,first){
   save();}
 
 /* ================= drills ================= */
+function timeLimit(){if(S.custom)return 0;const l=D.level;return l<=3?0:l<=7?6000:l<=11?4000:3000;}
 async function nameQ(tok,t,m){
   S.cur={m};hideReveal();setOrb({big:'?',state:'pulse'});msg('Listen…');
   const ms=tone(mfreq(m));D.lastQ=Date.now();save();
-  const p=circles(tok,pool());await sleep(tok,Math.max(700,ms-450));
+  const p=circles(tok,pool());p.catch(()=>{});await sleep(tok,Math.max(700,ms-450));
   $('circles').classList.remove('locked');S.replay=true;$('againBtn').disabled=false;msg('Which note was that?');
-  const r=await p;S.replay=false;$('againBtn').disabled=true;return r;}
+  const lim=timeLimit(),t0=performance.now();let timer;
+  if(lim){const tb=$('tbar'),i=tb.firstElementChild;tb.classList.add('on');i.style.transition='none';i.style.width='100%';void i.offsetWidth;i.style.transition=`width ${lim}ms linear`;i.style.width='0%';}
+  const r=lim?await Promise.race([p,new Promise(res=>{timer=setTimeout(()=>res({pc:-1,el:null}),lim);})]):await p;
+  clearTimeout(timer);$('tbar').classList.remove('on');$('circles').classList.add('locked');
+  if(r.pc===t){D.rt.push(Math.round(performance.now()-t0));if(D.rt.length>60)D.rt.shift();}
+  S.replay=false;$('againBtn').disabled=true;return r;}
 
 async function feedbackReveal(tok,t,m,picked,ok){
   const oct=Math.floor(m/12)-1;
   const right=$('circles').querySelector(`[data-pc="${t}"]`);if(right)right.classList.add('right');
-  if(!ok&&picked!=null){const w=$('circles').querySelector(`[data-pc="${picked}"]`);if(w)w.classList.add('wrong');}
+  if(!ok&&picked>=0){const w=$('circles').querySelector(`[data-pc="${picked}"]`);if(w)w.classList.add('wrong');}
   setOrb({pc:t,big:lab(t,oct),sub:hzTxt(t,oct)});
-  msg(ok?`<span class="good">Yes.</span> That was <b>${NAMES[t]}${oct}</b>.`:`<span class="bad">Not quite.</span> That was <b>${NAMES[t]}${oct}</b>, you picked ${NAMES[picked]}.`);
-  reveal(t,m,picked);await sleep(tok,300);tone(mfreq(m));flood(t,oct,1300);await sleep(tok,3500);}
+  msg(ok?`<span class="good">Yes.</span> That was <b>${NAMES[t]}${oct}</b>.`:picked<0?`<span class="bad">Out of time.</span> That was <b>${NAMES[t]}${oct}</b>.`:`<span class="bad">Not quite.</span> That was <b>${NAMES[t]}${oct}</b>, you picked ${NAMES[picked]}.`);
+  reveal(t,m,picked>=0?picked:null);await sleep(tok,300);tone(mfreq(m));flood(t,oct,1300);await sleep(tok,1600);
+  // Echo: optional sing-back with the live dial while everything is on screen
+  const v=await chooseTimed(tok,[{v:'echo',l:'Sing it'},{v:'next',l:'Next',p:1}],4500,'next');
+  if(v==='echo'){hideCircles();await findCenter(tok,t,m);}}
 
 async function stName(tok,blind){
   pickWin();const N=8,res=[];
@@ -534,7 +579,7 @@ async function stName(tok,blind){
     if(!S.fresh)await clearEar(tok);S.fresh=false;
     const t=wpick(pool()),m=midiIn(t),first=S.first;S.first=false;
     const r=await nameQ(tok,t,m),ok=r.pc===t;
-    if(blind){res.push({t,m,a:r.pc,first});setOrb({big:'✓'});msg(`Logged. <b>${i+1} of ${N}</b>.`);await sleep(tok,500);}
+    if(blind){res.push({t,m,a:r.pc,first});setOrb({big:r.pc<0?'⏱':'✓'});msg(r.pc<0?`Out of time. <b>${i+1} of ${N}</b>.`:`Logged. <b>${i+1} of ${N}</b>.`);await sleep(tok,500);}
     else{recordName(t,r.pc,ok,first);await feedbackReveal(tok,t,m,r.pc,ok);}
     hideCircles();}
   if(blind){const c=res.filter(x=>x.a===x.t).length;
@@ -549,25 +594,31 @@ async function answerKey(tok,res){
   if(mode==='skip')return;
   const list=mode==='all'?res:misses;
   for(let i=0;i<list.length;i++){const x=list[i],ok=x.a===x.t,oct=Math.floor(x.m/12)-1;
-    const show=()=>{tone(mfreq(x.m));flood(x.t,oct,1300);reveal(x.t,x.m,ok?null:x.a);setOrb({pc:x.t,big:lab(x.t,oct),sub:hzTxt(x.t,oct)});
-      msg(`${i+1} of ${list.length} · <b>${NAMES[x.t]}${oct}</b> ${ok?'<span class="good">✓</span>':'<span class="bad">you said '+NAMES[x.a]+'</span>'}`);};
+    const show=()=>{tone(mfreq(x.m));flood(x.t,oct,1300);reveal(x.t,x.m,ok||x.a<0?null:x.a);setOrb({pc:x.t,big:lab(x.t,oct),sub:hzTxt(x.t,oct)});
+      msg(`${i+1} of ${list.length} · <b>${NAMES[x.t]}${oct}</b> ${ok?'<span class="good">✓</span>':'<span class="bad">'+(x.a<0?'out of time':'you said '+NAMES[x.a])+'</span>'}`);};
     show();
-    for(;;){const v=await choose(tok,[{v:'again',l:'Hear again'},...(ok?[]:[{v:'both',l:'Hear both'}]),{v:'next',l:i<list.length-1?'Next':'Done',p:1},{v:'skip',l:'Skip rest'}]);
+    for(;;){const v=await choose(tok,[{v:'again',l:'Hear again'},...(ok||x.a<0?[]:[{v:'both',l:'Hear both'}]),{v:'echo',l:'Sing it'},{v:'next',l:i<list.length-1?'Next':'Done',p:1},{v:'skip',l:'Skip rest'}]);
       if(v==='again')show();
+      else if(v==='echo'){await findCenter(tok,x.t,x.m);show();}
       else if(v==='both'){const am=x.m+(((x.a-x.t)%12+18)%12-6);tone(mfreq(x.m));flood(x.t,oct,900);await sleep(tok,1200);
         tone(mfreq(am));flood(x.a,Math.floor(am/12)-1,900);await sleep(tok,1000);}
       else if(v==='skip'){hideReveal();return;}
       else break;}}
   hideReveal();}
 
-async function singQ(tok,t,m){
-  const oct=Math.floor(m/12)-1;
-  setOrb({big:'?',state:'pulse'});msg('Listen, and lock it in…');
-  const ms=tone(mfreq(m));D.lastQ=Date.now();await sleep(tok,ms*0.85);
-  await clearEar(tok);hideReveal();setOrb({big:'?'});
-  const f=await punch(tok,'Ready? Sing the note you heard.');
-  if(f==='nomic')return 'nomic';
-  return await singResult(tok,f,t,m,'sing');}
+const voiceOct=()=>D.settings.voice==='high'?4:3;
+async function singNameQ(tok,t,first){ // name, octave, color and hertz shown, no sound: sing it from memory
+  const oct=voiceOct(),m=12*(oct+1)+t;hideReveal();
+  setOrb({pc:t,big:lab(t,oct),sub:hzTxt(t,oct)});D.lastQ=Date.now();
+  msg(`Sing <b>${NAMES[t]}${oct}</b> from memory. Sing the word “${NAMES[t]}” on the note.`);
+  let hinted=false;
+  for(;;){const v=await choose(tok,[{v:'sing',l:'Tap to sing',p:1},{v:'hint',l:hinted?'Hear it again':'Hint'}]);
+    if(v==='hint'){hinted=true;tone(mfreq(m));await sleep(tok,1400);msg(`Hinted, so this one won't count. Sing <b>${NAMES[t]}${oct}</b> when you're ready.`);continue;}
+    break;}
+  const f=await listen(tok);if(f==='nomic')return 'nomic';
+  const g=await singResult(tok,f,t,m,hinted?'hint':'name');
+  if(first&&!hinted&&g){D.first.a++;if(g.status==='on')D.first.c++;save();}
+  return g;}
 
 function showScale(cents,label,t){const el=$('cscale');el.classList.add('on');
   $('cmk').style.left=Math.max(1,Math.min(99,50+cents))+'%';$('clab').textContent=label;
@@ -578,12 +629,12 @@ async function singResult(tok,f,t,m,kind){
   if(!f){setOrb({big:'–'});msg("Didn't catch a steady note. Moving on.");await sleep(tok,1500);return null;}
   closeMic();
   const g=grade(f,t);
-  const st=kind==='recall'?D.recall:D.sing;st.a++;if(g.status==='on'){st.on++;}
-  if(kind!=='recall'){if(g.status==='close')D.sing.close++;if(g.status!=='off'){D.sing.cents+=Math.abs(g.toT);D.sing.cn++;}}
-  S.sn++;if(g.status==='on')S.son++;save();
+  if(kind!=='hint'){const st=kind==='recall'?D.recall:kind==='match'?D.match:D.sing;st.a++;if(g.status==='on'){st.on=(st.on||0)+1;if(kind==='match')st.c++;}
+    if(kind==='name'){if(g.status==='close')D.sing.close++;if(g.status!=='off'){D.sing.cents+=Math.abs(g.toT);D.sing.cn++;}}
+    S.sn++;if(g.status==='on')S.son++;save();}
   flood(g.pc,g.oct,1300);setOrb({pc:g.pc,big:lab(g.pc,g.oct),sub:hzTxt(g.pc,g.oct)});
   const word={on:'<span class="good">On it.</span>',close:'<span class="warn">Close.</span>',off:'<span class="bad">Off.</span>'}[g.status];
-  msg(`${word} You sang <b>${NAMES[g.pc]}${g.oct}</b>. Target: ${NAMES[t]}.`);
+  msg(`${word} You sang <b>${NAMES[g.pc]}${g.oct}</b>. Target: ${NAMES[t]}.${kind==='hint'?' (hinted)':''}`);
   showScale(g.toT,NAMES[t],t);
   await sleep(tok,4500);
   tone(mfreq(m));flood(t,oct,1300);reveal(t,m,null);setOrb({pc:t,big:lab(t,oct),sub:hzTxt(t,oct)});
@@ -595,7 +646,7 @@ async function singResult(tok,f,t,m,kind){
 async function findCenter(tok,t,m){ // live needle toward the target; stops once you hold the center
   const oct=Math.floor(m/12)-1;setOrb({pc:t,big:lab(t,oct),sub:hzTxt(t,oct)});
   if(!await openMic()){msg(NOMIC);await sleep(tok,2000);return;}
-  msg(`Sing <b>${NAMES[t]}${oct}</b> and move the marker to the center.`);showScale(0,NAMES[t]+oct,t);$('crd').textContent='listening…';
+  msg(`Sing the word “${NAMES[t]}” on <b>${NAMES[t]}${oct}</b>, any octave, and move the marker to the center.`);showScale(0,NAMES[t]+oct,t);$('crd').textContent='listening…';
   const stop={v:false};const el=$('ctl');el.innerHTML='<button class="btn">Done</button>';el.firstElementChild.onclick=()=>{stop.v=true;};
   let hist=[],held=0;
   try{await new Promise((res,rej)=>{const iv=setInterval(()=>{if(tok!==S.tok){clearInterval(iv);return rej(CANCEL);}
@@ -609,10 +660,38 @@ async function findCenter(tok,t,m){ // live needle toward the target; stops once
   await sleep(tok,1500);}
 
 const NOMIC="Mic not available, so singing is skipped. Check this site's microphone permission in your browser settings.";
-async function stSing(tok,n){
-  pickWin();
-  for(let i=0;i<n;i++){if(!S.fresh)await clearEar(tok);S.fresh=false;const t=wpick(pool());
-    if(await singQ(tok,t,midiIn(t))==='nomic'){msg(NOMIC);await sleep(tok,3000);return;}}}
+async function stSingName(tok,n){
+  for(let i=0;i<n;i++){if(!S.fresh)await clearEar(tok);S.fresh=false;const first=S.first;S.first=false;
+    if(await singNameQ(tok,wpick(pool()),first)==='nomic'){msg(NOMIC);await sleep(tok,3000);return;}}}
+
+/* Match: short rounds pairing the attributes; every question ends with the note itself */
+async function options(tok,items){const el=$('circles');
+  el.innerHTML=items.map((it,i)=>`<button class="cb${it.pill?' pill':''}" data-i="${i}" style="${it.bg?'background:'+it.bg:''}">${it.label||''}</button>`).join('');
+  el.classList.add('on');el.classList.remove('locked');
+  return new Promise((res,rej)=>{const un=track(()=>rej(CANCEL));
+    el.querySelectorAll('.cb').forEach(b=>b.onclick=()=>{if(el.classList.contains('locked'))return;un();el.classList.add('locked');res({i:+b.dataset.i,el:b});});});}
+function matchTypes(){const l=S.custom?14:D.level,t=['color2name','sound2color'];if(l>=2)t.push('hz2name','name2hz');if(l>=6&&D.micOK)t.push('hz2sing');return t;}
+async function stMatch(tok,n){
+  pickWin();const types=matchTypes();let sounds=0;
+  for(let i=0;i<n;i++){let ty=types[rnd(types.length)];if(ty==='sound2color'&&sounds>=2)ty='color2name';
+    const t=wpick(pool()),m=midiIn(t),oct=Math.floor(m/12)-1,hz=fr(t,oct).toFixed(1)+' Hz';
+    const cands=[];pool().forEach(pc=>{for(let k=0;k<W.n+1;k++){const mm=W.start+12*k+((pc-W.start)%12+12)%12;if(mm!==m&&mm<=96)cands.push(mm);}});
+    const opts=shuffle([m,...shuffle(cands).slice(0,3)]);let ok=false;hideReveal();
+    if(ty==='sound2color'){sounds++;if(!S.fresh)await clearEar(tok);
+      setOrb({big:'?',state:'pulse'});msg('Which color is this note?');const ms=tone(mfreq(m));await sleep(tok,Math.max(700,ms-450));
+      const ps=shuffle(pool().slice()),r=await options(tok,ps.map(pc=>({label:'',bg:col(pc)})));ok=ps[r.i]===t;r.el.classList.add(ok?'right':'wrong');}
+    else if(ty==='color2name'){setOrb({pc:t,big:''});msg('Which note is this color?');
+      const ps=shuffle(pool().slice()),r=await options(tok,ps.map(pc=>({label:NAMES[pc],pill:true})));ok=ps[r.i]===t;r.el.classList.add(ok?'right':'wrong');}
+    else if(ty==='hz2name'){setOrb({big:'',sub:''});$('orb').children[0].innerHTML=`<span style="font-size:26px">${hz}</span>`;msg('Which note is this frequency?');
+      const r=await options(tok,opts.map(mm=>({label:NAMES[mm%12]+(Math.floor(mm/12)-1),pill:true})));ok=opts[r.i]===m;r.el.classList.add(ok?'right':'wrong');}
+    else if(ty==='name2hz'){setOrb({pc:t,big:lab(t,oct)});msg('What is its frequency?');
+      const r=await options(tok,opts.map(mm=>({label:mfreq(mm).toFixed(1),pill:true})));ok=opts[r.i]===m;r.el.classList.add(ok?'right':'wrong');}
+    else{setOrb({big:''});$('orb').children[0].innerHTML=`<span style="font-size:26px">${hz}</span>`;
+      const f=await punch(tok,`Sing <b>${hz}</b>. Any octave counts.`);if(f==='nomic'){msg(NOMIC);await sleep(tok,2000);continue;}
+      await singResult(tok,f,t,m,'match');S.fresh=false;continue;}
+    D.match.a++;if(ok)D.match.c++;save();S.fresh=false;
+    tone(mfreq(m));flood(t,oct,1200);setOrb({pc:t,big:lab(t,oct),sub:hzTxt(t,oct)});
+    msg(`${ok?'<span class="good">Yes.</span>':'<span class="bad">Not quite.</span>'} <b>${NAMES[t]}${oct}</b> · ${hz}`);await sleep(tok,2300);hideCircles();}}
 
 async function stRecall(tok,n,colorOnly){
   for(let i=0;i<n;i++){if(!S.fresh)await clearEar(tok);S.fresh=false;
@@ -629,7 +708,7 @@ function spotNotes(){const p=pool();if(p.length<=3)return p.slice();
   return (newest!=null?[newest]:[]).concat(rest).slice(0,3);}
 async function spotlight(tok,notes,out){ // out: {orb:true} uses session orb, else Learn message
   for(const pc of notes){
-    const octs=shuffle([3,4,5]).concat([3+rnd(3)]);
+    const octs=shuffle([4,5,3]).concat([4+rnd(2)]);
     if(out.msg)out.msg(`Spotlight on <b>${NAMES[pc]}</b>. Hum along.`);
     for(const o of octs){tone(fr(pc,o),1.6);flood(pc,o,1250);if(out.orb)setOrb({pc,big:lab(pc,o),sub:hzTxt(pc,o)});await sleep(tok,1750);}
     await sleep(tok,500);}
@@ -638,12 +717,12 @@ async function spotlight(tok,notes,out){ // out: {orb:true} uses session orb, el
     const o=4;for(let k=0;k<6;k++){const pc=pair[k%2];tone(fr(pc,o),1.3);flood(pc,o,1000);if(out.orb)setOrb({pc,big:lab(pc,o)});await sleep(tok,1500);}}}
 
 /* ================= sessions ================= */
-function planFor(l){const p=[{k:'spot',l:'Warm-up'}],blind=l>=4;
-  p.push({k:'name',blind,l:blind?'Name it · blind':'Name it'});
-  p.push({k:'sing',n:4,l:'Sing it'});
-  if(l>=6)p.push({k:'recall',n:3,colorOnly:l>=12,l:l>=12?'Recall · color only':'Recall'});
-  p.push({k:'name',blind,l:blind?'Name it · blind':'Name it'});
-  if(l>=8)p.push({k:'name',blind,l:'Name it · blind'});
+function planFor(l){const blind=l>=4,N=blind?'Name it · blind':'Name it',p=[{k:'spot',l:'Warm-up'}];
+  p.push({k:'name',blind,l:N});
+  p.push({k:'singname',n:4,l:'Sing the name'});
+  p.push({k:'match',n:6,l:'Match'});
+  if(l>=12)p.push({k:'recall',n:3,colorOnly:true,l:'Recall · color only'});
+  p.push({k:'name',blind,l:N});
   return p;}
 function renderChips(plan,i){$('chips').innerHTML=plan.map((s,j)=>`<span class="chip${j===i?' now':j<i?' done':''}">${s.l}</span>`).join('');}
 function showSess(on){$('home').style.display=on?'none':'';$('sess').style.display=on?'':'none';
@@ -656,7 +735,8 @@ async function runSession(plan,custom){
     for(let i=0;i<plan.length;i++){renderChips(plan,i);const st=plan[i];
       if(st.k==='spot'){setOrb({});await spotlight(tok,spotNotes(),{orb:true,msg});S.fresh=false;}
       else if(st.k==='name')await stName(tok,st.blind);
-      else if(st.k==='sing')await stSing(tok,st.n);
+      else if(st.k==='singname')await stSingName(tok,st.n);
+      else if(st.k==='match')await stMatch(tok,st.n);
       else if(st.k==='recall')await stRecall(tok,st.n,st.colorOnly);}
     renderChips(plan,plan.length);await sessDone(tok);
   }catch(e){if(e!==CANCEL){console.error(e);msg('Something went wrong: '+(e&&e.message));}}
@@ -670,7 +750,7 @@ async function quickNote(){
   showSess(true);renderChips([{l:'Quick note'}],0);pickWin();
   try{const t=wpick(pool()),m=midiIn(t);
     const sing=D.micOK&&Math.random()<0.5;
-    if(sing){const g=await singQ(tok,t,m);if(g&&g!=='nomic'){D.first.a++;if(g.status==='on')D.first.c++;save();}}
+    if(sing){await singNameQ(tok,t,true);}
     else{const r=await nameQ(tok,t,m),ok=r.pc===t;recordName(t,r.pc,ok,true);await feedbackReveal(tok,t,m,r.pc,ok);hideCircles();}
     closeMic();await sessDone(tok);
   }catch(e){if(e!==CANCEL){console.error(e);msg('Something went wrong: '+(e&&e.message));}}
@@ -699,7 +779,7 @@ $('cuMinus').onclick=()=>{D.custom.octs=Math.max(1,D.custom.octs-1);save();rende
 $('cuPlus').onclick=()=>{D.custom.octs=Math.min(4,D.custom.octs+1);save();renderCustom();};
 $('cuDrill').querySelectorAll('button').forEach(b=>b.onclick=()=>{D.custom.drill=b.dataset.v;save();renderCustom();});
 $('cuStart').onclick=()=>{$('customModal').classList.remove('on');const d=D.custom.drill;
-  const plan=d==='sing'?[{k:'sing',n:4,l:'Sing it'},{k:'sing',n:4,l:'Sing it'}]:[{k:'name',blind:d==='blind',l:d==='blind'?'Name it · blind':'Name it'},{k:'name',blind:d==='blind',l:d==='blind'?'Name it · blind':'Name it'}];
+  const plan=d==='sing'?[{k:'singname',n:4,l:'Sing the name'},{k:'singname',n:4,l:'Sing the name'}]:d==='match'?[{k:'match',n:6,l:'Match'},{k:'match',n:6,l:'Match'}]:[{k:'name',blind:d==='blind',l:d==='blind'?'Name it · blind':'Name it'},{k:'name',blind:d==='blind',l:d==='blind'?'Name it · blind':'Name it'}];
   runSession(plan,true);};
 
 /* ================= learn: explore ================= */
@@ -777,6 +857,9 @@ function renderProg(){const td=D.days[today()]||{a:0,c:0};
   $('pBack').textContent=D.comeback.a?`${D.comeback.c}/${D.comeback.a}`:'–';
   $('pSing').textContent=pct(D.sing.on,D.sing.a);$('pCents').textContent=D.sing.cn?Math.round(D.sing.cents/D.sing.cn)+'¢':'–';
   $('pRecall').textContent=pct(D.recall.on,D.recall.a);
+  const rt=D.rt.slice().sort((a,b)=>a-b);$('pRT').textContent=rt.length?(rt[rt.length>>1]/1000).toFixed(1)+' s':'–';
+  const dm=D.dir.sharp+D.dir.flat;$('pDir').textContent=dm?(D.dir.sharp>=D.dir.flat?Math.round(100*D.dir.sharp/dm)+'% sharp':Math.round(100*D.dir.flat/dm)+'% flat'):'–';
+  $('pMatch').textContent=pct(D.match.c,D.match.a);
   let h='';for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const v=D.days[dayKey(d)],p=v&&v.a?v.c/v.a:0;
     h+=`<div class="d"><div class="lab">${v&&v.a?Math.round(p*100):''}</div><div class="col" style="height:${p*70}%;opacity:${v&&v.a?1:.15}"></div><div class="lab">${'SMTWTFS'[d.getDay()]}</div></div>`;}
   $('pDays').innerHTML=h;

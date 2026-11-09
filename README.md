@@ -8,3 +8,7 @@ A free perfect pitch trainer. Every note gets one fixed color (laid out on the c
 - **Progress:** first-note, comeback, singing and per-note scores.
 
 Runs in the browser. Singing uses the microphone, and all audio is processed on your device.
+
+## Credits
+
+Piano samples: Salamander Grand Piano by Alexander Holm, licensed under CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/), via the Tone.js audio collection. Samples are in the `piano` folder.
