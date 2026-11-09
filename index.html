@@ -316,10 +316,14 @@ function ac(){
   if(!ctx){ctx=new (window.AudioContext||window.webkitAudioContext)();master=ctx.createGain();master.gain.value=D.settings.vol;
     const comp=ctx.createDynamicsCompressor();master.connect(comp);comp.connect(ctx.destination);}
   if(ctx.state==='suspended')ctx.resume();return ctx;}
-let noiseBuf=null;
+let noiseBuf=null,busN=null;
+function bus(){if(!busN){busN=ctx.createGain();busN.connect(master);}return busN;}
+function hush(){ // cut every scheduled and ringing sound immediately
+  if(busN&&ctx){const old=busN,now=ctx.currentTime;old.gain.cancelScheduledValues(now);old.gain.setValueAtTime(old.gain.value,now);old.gain.linearRampToValueAtTime(0,now+0.04);setTimeout(()=>{try{old.disconnect();}catch(e){}},120);busN=null;}
+  clearTimeout(floodT);$('flood').classList.remove('on');}
 function tone(f,dur=1.6,at=null,amp=0.45,soft=false){ // additive piano-ish voice: stretched partials, two-stage decay, chorus layer, hammer thump
   const c=ac(),t0=at??c.currentTime+0.03,g=c.createGain(),end=t0+dur;
-  g.gain.setValueAtTime(amp,t0);g.gain.setValueAtTime(amp,end-0.12);g.gain.linearRampToValueAtTime(0,end);g.connect(master);
+  g.gain.setValueAtTime(amp,t0);g.gain.setValueAtTime(amp,end-0.12);g.gain.linearRampToValueAtTime(0,end);g.connect(bus());
   const B=0.00035;
   const NP=soft?4:8;
   for(let n=1;n<=NP;n++){const pf=n*f*Math.sqrt(1+B*n*n);if(pf>10000)break;
@@ -667,7 +671,7 @@ async function quickNote(){
   closeMic();}
 $('startBtn').onclick=()=>runSession(planFor(D.level),false);
 $('quickBtn').onclick=quickNote;
-$('endBtn').onclick=()=>{cancelAll();closeMic();showSess(false);renderHome();};
+$('endBtn').onclick=()=>{cancelAll();hush();closeMic();showSess(false);renderHome();};
 $('againBtn').onclick=()=>{if(S.replay&&S.cur)tone(mfreq(S.cur.m));};
 
 /* ================= home ================= */
@@ -717,7 +721,7 @@ function wkStep(){if(!WK.on)return;const pc=FIFTHS[((WK.i%12)+12)%12],base=12*(e
   if(WK.kind==='chord'){[0,4,7].forEach(iv=>tone(mfreq(base+iv),Math.max(1.2,WK.spd*0.9),null,0.3));}else tone(mfreq(base),Math.max(1.2,WK.spd*0.9));
   flood(pc,exOct,Math.min(1300,WK.spd*600));wkMark(pc);exLast=pc;
   WK.i+=WK.dir==='cw'?1:-1;WK.id=setTimeout(wkStep,WK.spd*1000);}
-function wkStop(){WK.on=false;clearTimeout(WK.id);$('wkBtn').textContent='Walk the wheel';wkMark(-1);}
+function wkStop(){WK.on=false;clearTimeout(WK.id);hush();$('wkBtn').textContent='Walk the wheel';wkMark(-1);}
 $('wkBtn').onclick=()=>{if(WK.on){wkStop();return;}ac();WK.on=true;WK.i=Math.max(0,FIFTHS.indexOf(exLast));$('wkBtn').textContent='Stop';wkStep();};
 $('wkSpd').oninput=e=>{WK.spd=+e.target.value;wkLbl();};
 ['wkDir','wkKind'].forEach(id=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{
@@ -729,7 +733,7 @@ let spSel=null,spOn=false;
 function renderSpot(){if(!spSel)spSel=lvlNotes(D.level).slice(-3);
   $('spPick').innerHTML=Array.from({length:12},(_,pc)=>`<button class="pk${spSel.includes(pc)?' on':''}" data-pc="${pc}" style="background:${col(pc)}">${NAMES[pc]}</button>`).join('');
   $('spPick').querySelectorAll('.pk').forEach(b=>b.onclick=()=>{const pc=+b.dataset.pc,i=spSel.indexOf(pc);if(i>=0){if(spSel.length>1)spSel.splice(i,1);}else spSel.push(pc);renderSpot();});}
-function spStop(){spOn=false;cancelAll();$('spBtn').textContent='Start spotlight';$('spMsg').innerHTML='';}
+function spStop(){spOn=false;cancelAll();hush();$('spBtn').textContent='Start spotlight';$('spMsg').innerHTML='';}
 $('spBtn').onclick=async()=>{if(spOn){spStop();return;}cancelAll();ac();spOn=true;const tok=++S.tok;$('spBtn').textContent='Stop';
   try{for(;;){await spotlight(tok,spSel.slice(),{msg:h=>$('spMsg').innerHTML=h});await sleep(tok,800);}}catch(e){}};
 
@@ -789,7 +793,7 @@ $('sReset').onclick=()=>{if(!resetArm){resetArm=true;$('sReset').textContent='Ta
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+b.dataset.v));
-  if(b.dataset.v!=='train'&&$('sess').style.display!=='none'){cancelAll();closeMic();showSess(false);renderHome();}
+  if(b.dataset.v!=='train'&&$('sess').style.display!=='none'){cancelAll();hush();closeMic();showSess(false);renderHome();}
   if(b.dataset.v!=='learn'){if(spOn)spStop();if(hdOn)holdStop();if(WK.on)wkStop();}
   if(b.dataset.v==='prog')renderProg();window.scrollTo(0,0);});
 
