@@ -146,7 +146,8 @@ nav button.on{color:var(--accent)}
         <div class="lvl-t" id="lvlTitle"></div>
         <div class="dots" id="lvlDots"></div>
         <div class="bar" style="margin-top:12px"><i id="lvlBar"></i></div>
-        <div class="small-dim" id="lvlInfo"></div>
+        <div class="small-dim" id="lvlInfo" style="line-height:1.7"></div>
+        <button class="btn small" id="stayBtn" style="margin-top:10px"></button>
       </div>
       <button class="btn primary big" id="startBtn">Start session</button>
       <div class="row" style="margin-top:10px">
@@ -317,12 +318,13 @@ const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 
 /* ================= storage ================= */
 const KEY='chroma-v1';
-function fresh(){return{level:1,recent:[],
+function fresh(){return{level:1,recent:[],recentT:[],singRecent:[],stay:false,
   notes:Array.from({length:12},()=>({a:0,c:0,r:[]})),confusion:Array.from({length:12},()=>Array(12).fill(0)),
   days:{},first:{a:0,c:0},comeback:{a:0,c:0},sing:{a:0,on:0,close:0,cents:0,cn:0},recall:{a:0,on:0},lastQ:0,micOK:false,dir:{sharp:0,flat:0},rt:[],match:{a:0,c:0},
   custom:{notes:[0,7],octs:1,drill:'blind'},settings:{hz:'on',voice:'low',clear:'intense',vol:0.85,v2:true}};}
 let D;try{D=JSON.parse(localStorage.getItem(KEY))||fresh();}catch(e){D=fresh();}
 D=Object.assign(fresh(),D);D.settings=Object.assign(fresh().settings,D.settings);D.custom=Object.assign(fresh().custom,D.custom);
+if(D.recentT.length!==D.recent.length)D.recentT=D.recent.map(()=>D.lastQ||Date.now());
 if(!D.settings.v2){D.settings.hz='on';D.settings.v2=true;}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}}
 
@@ -542,10 +544,16 @@ function recordName(t,a,ok,first){
   if(!ok&&a>=0){D.confusion[t][a]++;const d=((a-t)%12+12)%12;if(d>=1&&d<=5)D.dir.sharp++;else if(d>=7)D.dir.flat++;}
   if(first){D.first.a++;if(ok)D.first.c++;}
   S.n++;if(ok)S.c++;
-  if(!S.custom){D.recent.push(ok?1:0);if(D.recent.length>20)D.recent.shift();
-    if(D.recent.length>=20&&mean(D.recent)>=0.9&&D.level<MAXLVL){D.level++;D.recent=[];
-      showBanner(D.level<=11?`Level up. ${NAMES[lvlNotes(D.level).slice(-1)[0]]} joins your notes.`:`Level up. Now ${lvlOcts(D.level)} octaves.`);}}
+  if(!S.custom){D.recent.push(ok?1:0);D.recentT.push(S.sid||Date.now());if(D.recent.length>20){D.recent.shift();D.recentT.shift();}checkLevel();}
   save();}
+function levelGates(){ // naming 90% over 20, spread over sessions 3+ hours apart, and singing on pitch in 2 of the last 4
+  const r=D.recent,T=D.recentT,a=mean(r),sr=D.singRecent;
+  const name=r.length>=20&&a>=0.9,spread=T.length>=20&&(Math.max(...T)-Math.min(...T))>=3*3600*1000;
+  const sing=!D.micOK||(sr.length>=4&&sr.reduce((x,y)=>x+y,0)>=2);
+  return{name,spread,sing,a,n:r.length,son:sr.reduce((x,y)=>x+y,0),sn:sr.length};}
+function checkLevel(){if(D.stay||D.level>=MAXLVL)return;const g=levelGates();
+  if(g.name&&g.spread&&g.sing){D.level++;D.recent=[];D.recentT=[];D.singRecent=[];save();
+    showBanner(D.level<=11?`Level up. ${NAMES[lvlNotes(D.level).slice(-1)[0]]} joins your notes.`:`Level up. Now ${lvlOcts(D.level)} octaves.`);}}
 
 /* ================= drills ================= */
 function timeLimit(){if(S.custom)return 0;const l=D.level;return l<=3?0:l<=7?6000:l<=11?4000:3000;}
@@ -630,6 +638,7 @@ async function singResult(tok,f,t,m,kind){
   closeMic();
   const g=grade(f,t);
   if(kind!=='hint'){const st=kind==='recall'?D.recall:kind==='match'?D.match:D.sing;st.a++;if(g.status==='on'){st.on=(st.on||0)+1;if(kind==='match')st.c++;}
+    if(kind==='name'&&!S.custom){D.singRecent.push(g.status==='on'?1:0);if(D.singRecent.length>4)D.singRecent.shift();checkLevel();}
     if(kind==='name'){if(g.status==='close')D.sing.close++;if(g.status!=='off'){D.sing.cents+=Math.abs(g.toT);D.sing.cn++;}}
     S.sn++;if(g.status==='on')S.son++;save();}
   flood(g.pc,g.oct,1300);setOrb({pc:g.pc,big:lab(g.pc,g.oct),sub:hzTxt(g.pc,g.oct)});
@@ -729,7 +738,7 @@ function showSess(on){$('home').style.display=on?'none':'';$('sess').style.displ
   if(!on){hideCircles();hideReveal();$('ctl').innerHTML='';}}
 async function runSession(plan,custom){
   cancelAll();ac();const tok=++S.tok;
-  Object.assign(S,{custom,fresh:true,first:D.lastQ===0||Date.now()-D.lastQ>5*60*1000,n:0,c:0,sn:0,son:0});
+  Object.assign(S,{custom,sid:Date.now(),fresh:true,first:D.lastQ===0||Date.now()-D.lastQ>5*60*1000,n:0,c:0,sn:0,son:0});
   showSess(true);pickWin();
   try{
     for(let i=0;i<plan.length;i++){renderChips(plan,i);const st=plan[i];
@@ -746,7 +755,7 @@ async function sessDone(tok){hideCircles();hideReveal();setOrb({big:'✓'});
   msg('Done. You '+(parts.join(' and ')||'warmed up')+'.');
   await choose(tok,[{v:1,l:'Back',p:1}]);showSess(false);renderHome();}
 async function quickNote(){
-  cancelAll();ac();const tok=++S.tok;Object.assign(S,{custom:false,fresh:true,first:true,n:0,c:0,sn:0,son:0});
+  cancelAll();ac();const tok=++S.tok;Object.assign(S,{custom:false,sid:Date.now(),fresh:true,first:true,n:0,c:0,sn:0,son:0});
   showSess(true);renderChips([{l:'Quick note'}],0);pickWin();
   try{const t=wpick(pool()),m=midiIn(t);
     const sing=D.micOK&&Math.random()<0.5;
@@ -756,6 +765,7 @@ async function quickNote(){
   }catch(e){if(e!==CANCEL){console.error(e);msg('Something went wrong: '+(e&&e.message));}}
   closeMic();}
 $('startBtn').onclick=()=>runSession(planFor(D.level),false);
+$('stayBtn').onclick=()=>{D.stay=!D.stay;save();renderHome();if(!D.stay)checkLevel();renderHome();};
 $('quickBtn').onclick=quickNote;
 $('endBtn').onclick=()=>{cancelAll();hush();closeMic();showSess(false);renderHome();};
 $('againBtn').onclick=()=>{if(S.replay&&S.cur)tone(mfreq(S.cur.m));};
@@ -764,8 +774,11 @@ $('againBtn').onclick=()=>{if(S.replay&&S.cur)tone(mfreq(S.cur.m));};
 function renderHome(){const l=D.level;$('lvlNum').textContent=l;
   $('lvlTitle').textContent=l<=11?`${l+1} notes · 1 octave`:`All 12 notes · ${lvlOcts(l)} octaves`;
   $('lvlDots').innerHTML=lvlNotes(l).map(pc=>`<span class="dot" style="background:${col(pc)}">${NAMES[pc]}</span>`).join('');
-  const r=D.recent,a=mean(r);$('lvlBar').style.width=(Math.min(r.length,20)/20*Math.min(1,a/0.9)*100)+'%';
-  $('lvlInfo').textContent=l>=MAXLVL?'FINAL LEVEL':`NEXT LEVEL: 90% naming over 20 notes · now ${r.length}/20 at ${Math.round(a*100)}%`;}
+  const g=levelGates(),r=D.recent;$('lvlBar').style.width=(Math.min(r.length,20)/20*Math.min(1,g.a/0.9)*100)+'%';
+  const ck=b=>b?'<span class="good">✓</span>':'<span class="bad">·</span>';
+  $('lvlInfo').innerHTML=l>=MAXLVL?'FINAL LEVEL':
+    `NEXT LEVEL<br>${ck(g.name)} Naming 90% over 20 · now ${g.n}/20 at ${Math.round(g.a*100)}%<br>${ck(g.spread)} Spread over sessions 3+ hours apart<br>${ck(g.sing)} Sing the name on pitch, 2 of last 4${D.micOK?' · now '+g.son+'/'+g.sn:' · skipped, no mic yet'}`;
+  $('stayBtn').textContent='Stay on this level: '+(D.stay?'On':'Off');$('stayBtn').classList.toggle('primary',D.stay);}
 
 /* ================= custom ================= */
 function renderCustom(){const c=D.custom;
