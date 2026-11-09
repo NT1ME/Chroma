@@ -149,7 +149,7 @@ nav button.on{color:var(--accent)}
         <button class="btn" style="flex:1" id="quickBtn">Quick note</button>
         <button class="btn" style="flex:1" id="customBtn">Custom</button>
       </div>
-      <p class="note" style="margin-top:14px">A session runs about ten minutes and mixes the drills for your level. Quick note is a single cold note for between lessons. It always counts as a first note, your purest score. Use headphones or your phone speaker in a quiet room, and turn off the silent switch.</p>
+      <p class="note" style="margin-top:14px">A session runs about eight to ten minutes and mixes the drills for your level. Quick note is a single cold note for between lessons. It always counts as a first note, your purest score. Use headphones or your phone speaker in a quiet room, and turn off the silent switch.</p>
     </div>
 
     <div id="sess" style="display:none">
@@ -506,7 +506,7 @@ async function feedbackReveal(tok,t,m,picked,ok){
   reveal(t,m,picked);await sleep(tok,300);tone(mfreq(m));flood(t,oct,1300);await sleep(tok,3500);}
 
 async function stName(tok,blind){
-  pickWin();const N=10,res=[];
+  pickWin();const N=8,res=[];
   const comeback=blind&&!S.custom&&D.lastQ>0&&(Date.now()-D.lastQ)>3*3600*1000;
   for(let i=0;i<N;i++){
     if(!S.fresh)await clearEar(tok);S.fresh=false;
@@ -518,8 +518,8 @@ async function stName(tok,blind){
   if(blind){const c=res.filter(x=>x.a===x.t).length;
     res.forEach(x=>recordName(x.t,x.a,x.a===x.t,x.first));
     if(comeback){D.comeback.a+=N;D.comeback.c+=c;save();}
-    hideCircles();setOrb({big:c+'<span>/10</span>'});
-    msg(`Block done: <b>${c} of 10</b>.`);await answerKey(tok,res);}}
+    hideCircles();setOrb({big:c+'<span>/'+N+'</span>'});
+    msg(`Block done: <b>${c} of ${N}</b>.`);await answerKey(tok,res);}}
 
 async function answerKey(tok,res){
   const misses=res.filter(x=>x.a!==x.t);
@@ -618,7 +618,7 @@ async function spotlight(tok,notes,out){ // out: {orb:true} uses session orb, el
 /* ================= sessions ================= */
 function planFor(l){const p=[{k:'spot',l:'Warm-up'}],blind=l>=4;
   p.push({k:'name',blind,l:blind?'Name it · blind':'Name it'});
-  p.push({k:'sing',n:5,l:'Sing it'});
+  p.push({k:'sing',n:4,l:'Sing it'});
   if(l>=6)p.push({k:'recall',n:3,colorOnly:l>=12,l:l>=12?'Recall · color only':'Recall'});
   p.push({k:'name',blind,l:blind?'Name it · blind':'Name it'});
   if(l>=8)p.push({k:'name',blind,l:'Name it · blind'});
@@ -677,7 +677,7 @@ $('cuMinus').onclick=()=>{D.custom.octs=Math.max(1,D.custom.octs-1);save();rende
 $('cuPlus').onclick=()=>{D.custom.octs=Math.min(4,D.custom.octs+1);save();renderCustom();};
 $('cuDrill').querySelectorAll('button').forEach(b=>b.onclick=()=>{D.custom.drill=b.dataset.v;save();renderCustom();});
 $('cuStart').onclick=()=>{$('customModal').classList.remove('on');const d=D.custom.drill;
-  const plan=d==='sing'?[{k:'sing',n:5,l:'Sing it'},{k:'sing',n:5,l:'Sing it'}]:[{k:'name',blind:d==='blind',l:d==='blind'?'Name it · blind':'Name it'},{k:'name',blind:d==='blind',l:d==='blind'?'Name it · blind':'Name it'}];
+  const plan=d==='sing'?[{k:'sing',n:4,l:'Sing it'},{k:'sing',n:4,l:'Sing it'}]:[{k:'name',blind:d==='blind',l:d==='blind'?'Name it · blind':'Name it'},{k:'name',blind:d==='blind',l:d==='blind'?'Name it · blind':'Name it'}];
   runSession(plan,true);};
 
 /* ================= learn: explore ================= */
