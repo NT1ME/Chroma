@@ -282,7 +282,7 @@ nav button.on{color:var(--accent)}
   <h3>Settings</h3>
   <div class="blk"><div class="label">Show hertz</div><div class="seg" id="sHz"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
   <div class="blk"><div class="label">Your voice</div><div class="seg" id="sVoice"><button data-v="low">Lower voice</button><button data-v="high">Higher voice</button></div>
-    <p class="note">Sets the octave used when the app asks you to sing a named note. Singing is graded in any octave.</p></div>
+    <p class="note">Sets the octave for color-only recall and the Hold target. Sing the name uses the same octaves as your naming drill. Singing is graded in any octave.</p></div>
   <div class="blk"><div class="label">Ear clear between notes</div><div class="seg" id="sClear"><button data-v="light">Light</button><button data-v="strong">Strong</button><button data-v="intense">Intense</button></div></div>
   <div class="blk"><div class="label">Volume</div><input type="range" id="sVol" min="0" max="1" step="0.01" style="width:100%"></div>
   <div class="blk"><div class="label">Move progress to another device</div>
@@ -608,9 +608,9 @@ async function answerKey(tok,res){
 
 const voiceOct=()=>D.settings.voice==='high'?4:3;
 async function singNameQ(tok,t,first){ // name, octave, color and hertz shown, no sound: sing it from memory
-  const oct=voiceOct(),m=12*(oct+1)+t;hideReveal();
+  if(!W)pickWin();const m=midiIn(t),oct=Math.floor(m/12)-1;hideReveal(); // same octave window as the naming drill
   setOrb({pc:t,big:lab(t,oct),sub:hzTxt(t,oct)});D.lastQ=Date.now();
-  msg(`Sing <b>${NAMES[t]}${oct}</b> from memory. Sing the word “${NAMES[t]}” on the note.`);
+  msg(`Sing <b>${NAMES[t]}${oct}</b> from memory. Sing the word “${NAMES[t]}” on the note. Any octave counts if it's out of your range.`);
   let hinted=false;
   for(;;){const v=await choose(tok,[{v:'sing',l:'Tap to sing',p:1},{v:'hint',l:hinted?'Hear it again':'Hint'}]);
     if(v==='hint'){hinted=true;tone(mfreq(m));await sleep(tok,1400);msg(`Hinted, so this one won't count. Sing <b>${NAMES[t]}${oct}</b> when you're ready.`);continue;}
