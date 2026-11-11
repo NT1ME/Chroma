@@ -129,6 +129,10 @@ nav button.on{color:var(--accent)}
 .chartsvg rect{fill:var(--accent)}.chartsvg .z{fill:#444}
 .drow{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
 .drow .stepper .v{min-width:28px}
+.srow{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--panel2)}
+.srow .t{flex:1;font-size:14px;line-height:1.5}.srow .t b{font-size:15px}
+.srow .dots{margin-top:3px}.srow .dot{width:18px;height:18px;font-size:9px}
+.pk.typ{opacity:.45;background:var(--panel2);color:var(--text);font-size:13px;padding:10px 4px}.pk.typ.on{opacity:1;border-color:var(--accent);color:var(--accent)}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:flex-end;justify-content:center;z-index:10}
 .modal.on{display:flex}
 .sheet{background:var(--panel);border:1px solid var(--line);border-radius:16px 16px 0 0;padding:18px 16px 28px;width:100%;max-width:560px;max-height:90vh;overflow:auto}
@@ -301,13 +305,28 @@ nav button.on{color:var(--accent)}
 
 <!-- custom sheet -->
 <div class="modal" id="customModal"><div class="sheet">
-  <h3>Custom practice</h3>
-  <div class="blk"><div class="label">Notes</div><div class="pick" id="cuPick"></div></div>
-  <div class="blk"><div class="label">Octave range</div>
-    <div class="stepper"><button class="btn small" id="cuMinus">−</button><div class="v" id="cuOct"></div><button class="btn small" id="cuPlus">+</button></div></div>
-  <div class="blk"><div class="label">Drills · set how many rounds of each, they run in this order</div><div id="cuDrills"></div></div>
-  <div class="row"><button class="btn" style="flex:1" id="cuCancel">Cancel</button><button class="btn primary" style="flex:2" id="cuStart">Start</button></div>
-  <p class="note">Custom practice counts toward your stats but not your level.</p>
+  <div id="cuList">
+    <h3>Custom sessions</h3>
+    <p class="note">Build your own sessions from drills. Each drill has its own notes and octave range. Custom sessions count toward your stats but not your level.</p>
+    <div id="cuSessions" style="margin:12px 0"></div>
+    <div class="row"><button class="btn" style="flex:1" id="cuClose">Close</button><button class="btn primary" style="flex:2" id="cuNew">New session</button></div>
+  </div>
+  <div id="cuEdit" style="display:none">
+    <h3>Edit session</h3>
+    <input id="cuName" maxlength="40" style="width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:600 15px var(--sans);margin-bottom:12px">
+    <div class="label">Drills · they run top to bottom</div>
+    <div id="cuSteps"></div>
+    <button class="btn" style="width:100%;margin:10px 0" id="cuAdd">Add drill</button>
+    <div class="row"><button class="btn" id="cuDel">Delete</button><button class="btn" style="flex:1" id="cuBack">Back</button><button class="btn primary" style="flex:1" id="cuRun">Start</button></div>
+  </div>
+  <div id="cuStep" style="display:none">
+    <h3 id="cuStepTitle">Add drill</h3>
+    <div class="blk"><div class="label">Drill</div><div id="csType" class="pick" style="grid-template-columns:repeat(2,1fr)"></div></div>
+    <div class="blk"><div class="label">Notes</div><div class="pick" id="csPick"></div></div>
+    <div class="blk"><div class="label">Octave range</div>
+      <div class="stepper"><button class="btn small" id="csMinus">−</button><div class="v" id="csOct"></div><button class="btn small" id="csPlus">+</button></div></div>
+    <div class="row"><button class="btn" style="flex:1" id="csCancel">Cancel</button><button class="btn primary" style="flex:2" id="csSave">Save drill</button></div>
+  </div>
 </div></div>
 
 <!-- settings sheet -->
@@ -326,7 +345,7 @@ nav button.on{color:var(--accent)}
     <p class="note" id="syNote"></p></div>
   <div class="row"><button class="btn" id="sReset">Reset all progress</button><button class="btn primary" style="margin-left:auto" id="sClose">Done</button></div>
   <p class="note" id="resetNote"></p>
-  <p class="small-dim">VERSION 2026-11-11 C</p>
+  <p class="small-dim">VERSION 2026-11-11 D</p>
   <p class="note" style="margin-top:14px">Piano samples: Salamander Grand Piano by Alexander Holm, licensed CC BY 3.0. Everything is tuned to A440.</p>
 </div></div>
 
@@ -353,7 +372,7 @@ const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 const KEY='chroma-v1';
 function fresh(){return{level:1,recent:[],recentT:[],singRecent:[],stay:false,
   notes:Array.from({length:12},()=>({a:0,c:0,r:[]})),confusion:Array.from({length:12},()=>Array(12).fill(0)),
-  days:{},first:{a:0,c:0},comeback:{a:0,c:0},sing:{a:0,on:0,close:0,cents:0,cn:0},recall:{a:0,on:0},lastQ:0,micOK:false,mod:'pitch',wv:{level:1,recent:[],a:0,c:0,per:{},conf:{},m:{a:0,c:0}},dir:{sharp:0,flat:0},sdir:{sharp:0,flat:0},cold:{a:0,c:0},rt:[],match:{a:0,c:0},
+  days:{},first:{a:0,c:0},comeback:{a:0,c:0},sing:{a:0,on:0,close:0,cents:0,cn:0},recall:{a:0,on:0},lastQ:0,micOK:false,csess:null,mod:'pitch',wv:{level:1,recent:[],a:0,c:0,per:{},conf:{},m:{a:0,c:0}},dir:{sharp:0,flat:0},sdir:{sharp:0,flat:0},cold:{a:0,c:0},rt:[],match:{a:0,c:0},
   custom:{notes:[0,7],octs:1,drill:'blind'},settings:{hz:'on',voice:'low',clear:'intense',vol:0.85,v2:true}};}
 let D;try{D=JSON.parse(localStorage.getItem(KEY))||fresh();}catch(e){D=fresh();}
 D=Object.assign(fresh(),D);D.settings=Object.assign(fresh().settings,D.settings);D.custom=Object.assign(fresh().custom,D.custom);
@@ -428,8 +447,8 @@ function choose(tok,btns){return new Promise((res,rej)=>{if(tok!==S.tok)return r
 /* ================= pools, window, picking ================= */
 const lvlNotes=l=>l<=11?FIFTHS.slice(0,l+1):FIFTHS.slice();
 const lvlOcts=l=>l<=11?1:l-10;
-const pool=()=>S.custom?D.custom.notes.slice():lvlNotes(D.level);
-const octCount=()=>S.custom?D.custom.octs:lvlOcts(D.level);
+const pool=()=>S.custom?(S.cnotes||D.custom.notes).slice():lvlNotes(D.level);
+const octCount=()=>S.custom?(S.cocts||D.custom.octs):lvlOcts(D.level);
 let W=null; // {start:midi,n}
 function pickWin(){ // octaves 4-5 centered; the first three levels stay in a narrow range
   const n=octCount(),early=!S.custom&&D.level<=3;let minS,maxS;
@@ -809,10 +828,11 @@ function showSess(on){$('home').style.display=on||D.mod==='wave'?'none':'';$('ho
   if(!on){hideCircles();hideReveal();$('ctl').innerHTML='';if(typeof wvHide==='function')wvHide();if(D.mod==='wave'&&typeof renderWaveHome==='function')renderWaveHome();}}
 async function runSession(plan,custom){
   cancelAll();ac();const tok=++S.tok;
-  Object.assign(S,{custom,sid:Date.now(),fresh:true,first:false,n:0,c:0,sn:0,son:0});
+  Object.assign(S,{custom,sid:Date.now(),fresh:true,first:false,n:0,c:0,sn:0,son:0,cnotes:null,cocts:null});
   showSess(true);pickWin();
   try{await audioReady(tok);
     for(let i=0;i<plan.length;i++){renderChips(plan,i);const st=plan[i];
+      if(st.notes){S.cnotes=st.notes;S.cocts=st.octs||1;W=null;pickWin();}
       if(st.k==='cold')await stCold(tok);
       else if(st.k==='spot'){setOrb({});await spotlight(tok,spotNotes(),{orb:true,msg});S.fresh=false;}
       else if(st.k==='name')await stName(tok,st.blind);
@@ -985,26 +1005,56 @@ function renderHome(){const l=D.level;$('lvlNum').textContent=l;
   $('stayBtn').textContent='Stay on this level: '+(D.stay?'On':'Off');$('stayBtn').classList.toggle('primary',D.stay);}
 
 /* ================= custom ================= */
-function renderCustom(){const c=D.custom;
-  $('cuPick').innerHTML=Array.from({length:12},(_,pc)=>`<button class="pk${c.notes.includes(pc)?' on':''}" data-pc="${pc}" style="background:${col(pc)}">${NAMES[pc]}</button>`).join('');
-  $('cuPick').querySelectorAll('.pk').forEach(b=>b.onclick=()=>{const pc=+b.dataset.pc,i=c.notes.indexOf(pc);if(i>=0){if(c.notes.length>2)c.notes.splice(i,1);}else c.notes.push(pc);save();renderCustom();});
-  $('cuOct').textContent=c.octs+(c.octs>1?' octaves':' octave');
-  c.rounds=c.rounds||{name:2};
-  $('cuDrills').innerHTML=CDRILLS.map(([k,l])=>`<div class="drow"><span>${l}</span><div class="stepper"><button class="btn small" data-k="${k}" data-d="-1">−</button><div class="v">${c.rounds[k]||0}</div><button class="btn small" data-k="${k}" data-d="1">+</button></div></div>`).join('');
-  $('cuDrills').querySelectorAll('button').forEach(b=>b.onclick=()=>{const k=b.dataset.k;c.rounds[k]=Math.max(0,Math.min(3,(c.rounds[k]||0)+(+b.dataset.d)));save();renderCustom();});
-  const total=Object.values(c.rounds).reduce((x,y)=>x+y,0);$('cuStart').disabled=!total;$('cuStart').textContent=total?`Start · ${total} round${total>1?'s':''}`:'Pick at least one drill';}
-const CDRILLS=[['cold','Cold open'],['spot','Warm-up'],['name','Name it, with answers'],['blind','Name it, blind'],['singname','Sing the name'],['match','Match'],['recall','Color recall']];
-$('customBtn').onclick=()=>{renderCustom();$('customModal').classList.add('on');};
-$('cuCancel').onclick=()=>$('customModal').classList.remove('on');
-$('cuMinus').onclick=()=>{D.custom.octs=Math.max(1,D.custom.octs-1);save();renderCustom();};
-$('cuPlus').onclick=()=>{D.custom.octs=Math.min(4,D.custom.octs+1);save();renderCustom();};
-$('cuStart').onclick=()=>{const r=D.custom.rounds||{};$('customModal').classList.remove('on');const plan=[];
-  CDRILLS.forEach(([k,l])=>{for(let i=0;i<(r[k]||0);i++){
-    if(k==='cold')plan.push({k:'cold',l});else if(k==='spot')plan.push({k:'spot',l:'Warm-up'});
-    else if(k==='name')plan.push({k:'name',blind:false,l:'Name it'});else if(k==='blind')plan.push({k:'name',blind:true,l:'Name it · blind'});
-    else if(k==='singname')plan.push({k:'singname',n:5,l});else if(k==='match')plan.push({k:'match',n:5,l});
-    else if(k==='recall')plan.push({k:'recall',n:3,colorOnly:true,l});}});
-  if(plan.length)runSession(plan,true);};
+const CTYPES=[['cold','Cold open'],['spot','Warm-up'],['name','Name it, with answers'],['blind','Name it, blind'],['singname','Sing the name'],['match','Match'],['recall','Color recall']];
+const CLABEL=Object.fromEntries(CTYPES);
+function seedSessions(){if(D.csess)return;
+  D.csess=[{name:'D focus',steps:[{k:'spot',notes:[2,9],octs:1},{k:'name',notes:[2,9],octs:1},{k:'name',notes:[0,2],octs:1},{k:'blind',notes:[0,2],octs:1},{k:'singname',notes:[0,2,7],octs:1}]}];save();}
+const dotsHtml=ns=>ns.map(pc=>`<span class="dot" style="background:${col(pc)}">${NAMES[pc]}</span>`).join('');
+let cuIdx=-1,cuStepIdx=-1,cuDraft=null;
+function cuView(v){$('cuList').style.display=v==='list'?'':'none';$('cuEdit').style.display=v==='edit'?'':'none';$('cuStep').style.display=v==='step'?'':'none';}
+function renderCuList(){seedSessions();
+  $('cuSessions').innerHTML=D.csess.length?D.csess.map((x,i)=>`<div class="srow"><div class="t"><b>${x.name.replace(/</g,'&lt;')}</b><br>${x.steps.length} drill${x.steps.length===1?'':'s'} · ${x.steps.map(st=>CLABEL[st.k].split(',')[0]).join(', ')}</div>
+    <button class="btn small" data-e="${i}">Edit</button><button class="btn small primary" data-r="${i}">Start</button></div>`).join(''):'<p class="note">No sessions yet.</p>';
+  $('cuSessions').querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{cuIdx=+b.dataset.e;renderCuEdit();cuView('edit');});
+  $('cuSessions').querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>runCustom(D.csess[+b.dataset.r]));}
+function renderCuEdit(){const x=D.csess[cuIdx];$('cuName').value=x.name;
+  $('cuSteps').innerHTML=x.steps.length?x.steps.map((st,i)=>`<div class="srow"><div class="t"><b>${i+1}. ${CLABEL[st.k]}</b>${['spot','name','blind','singname','match','recall','cold'].includes(st.k)?`<div class="dots">${dotsHtml(st.notes)}</div>`:''}<span class="small-dim">${st.octs>1?st.octs+' octaves':'1 octave'}</span></div>
+    <button class="btn small" data-u="${i}" ${i===0?'disabled':''}>↑</button><button class="btn small" data-s="${i}">Edit</button><button class="btn small" data-x="${i}">✕</button></div>`).join(''):'<p class="note">Add your first drill.</p>';
+  $('cuSteps').querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{const i=+b.dataset.u;[x.steps[i-1],x.steps[i]]=[x.steps[i],x.steps[i-1]];save();renderCuEdit();});
+  $('cuSteps').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>openStep(+b.dataset.s));
+  $('cuSteps').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{x.steps.splice(+b.dataset.x,1);save();renderCuEdit();});
+  $('cuRun').disabled=!x.steps.length;}
+function openStep(i){const x=D.csess[cuIdx];cuStepIdx=i;const last=x.steps[x.steps.length-1];
+  cuDraft=i>=0?JSON.parse(JSON.stringify(x.steps[i])):{k:'name',notes:last?last.notes.slice():[0,7],octs:last?last.octs:1};
+  $('cuStepTitle').textContent=i>=0?'Edit drill':'Add drill';renderStep();cuView('step');}
+function renderStep(){const d=cuDraft;
+  $('csType').innerHTML=CTYPES.map(([k,l])=>`<button class="pk typ${d.k===k?' on':''}" data-k="${k}">${l}</button>`).join('');
+  $('csType').querySelectorAll('.pk').forEach(b=>b.onclick=()=>{d.k=b.dataset.k;renderStep();});
+  $('csPick').innerHTML=Array.from({length:12},(_,pc)=>`<button class="pk${d.notes.includes(pc)?' on':''}" data-pc="${pc}" style="background:${col(pc)}">${NAMES[pc]}</button>`).join('');
+  $('csPick').querySelectorAll('.pk').forEach(b=>b.onclick=()=>{const pc=+b.dataset.pc,j=d.notes.indexOf(pc);if(j>=0){if(d.notes.length>1)d.notes.splice(j,1);}else d.notes.push(pc);renderStep();});
+  $('csOct').textContent=d.octs+(d.octs>1?' octaves':' octave');
+  const needTwo=['name','blind','cold','match'].includes(d.k)&&d.notes.length<2;$('csSave').disabled=needTwo;$('csSave').textContent=needTwo?'Pick at least two notes':'Save drill';}
+$('csMinus').onclick=()=>{cuDraft.octs=Math.max(1,cuDraft.octs-1);renderStep();};
+$('csPlus').onclick=()=>{cuDraft.octs=Math.min(4,cuDraft.octs+1);renderStep();};
+$('csCancel').onclick=()=>{renderCuEdit();cuView('edit');};
+$('csSave').onclick=()=>{const x=D.csess[cuIdx];cuDraft.notes.sort((a,b)=>FIFTHS.indexOf(a)-FIFTHS.indexOf(b));
+  if(cuStepIdx>=0)x.steps[cuStepIdx]=cuDraft;else x.steps.push(cuDraft);save();renderCuEdit();cuView('edit');};
+$('cuAdd').onclick=()=>openStep(-1);
+$('cuName').oninput=e=>{D.csess[cuIdx].name=e.target.value||'Untitled';save();};
+$('cuBack').onclick=()=>{renderCuList();cuView('list');};
+let cuDelArm=false;
+$('cuDel').onclick=()=>{if(!cuDelArm){cuDelArm=true;$('cuDel').textContent='Tap again';return;}cuDelArm=false;$('cuDel').textContent='Delete';D.csess.splice(cuIdx,1);save();renderCuList();cuView('list');};
+$('cuNew').onclick=()=>{seedSessions();D.csess.push({name:'Session '+(D.csess.length+1),steps:[]});cuIdx=D.csess.length-1;save();renderCuEdit();cuView('edit');};
+$('cuRun').onclick=()=>runCustom(D.csess[cuIdx]);
+$('cuClose').onclick=()=>$('customModal').classList.remove('on');
+$('customBtn').onclick=()=>{renderCuList();cuView('list');$('customModal').classList.add('on');};
+function runCustom(x){if(!x||!x.steps.length)return;$('customModal').classList.remove('on');
+  const plan=x.steps.map(st=>{const base={notes:st.notes.slice(),octs:st.octs||1,l:CLABEL[st.k].replace(', with answers','').replace(', blind',' · blind')};
+    if(st.k==='cold')return{...base,k:'cold'};if(st.k==='spot')return{...base,k:'spot',l:'Warm-up'};
+    if(st.k==='name')return{...base,k:'name',blind:false};if(st.k==='blind')return{...base,k:'name',blind:true};
+    if(st.k==='singname')return{...base,k:'singname',n:5};if(st.k==='match')return{...base,k:'match',n:5};
+    return{...base,k:'recall',n:3,colorOnly:true};});
+  runSession(plan,true);}
 
 /* ================= learn: explore ================= */
 let exOct=4;
