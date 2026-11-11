@@ -378,7 +378,7 @@ function loadPiano(){if(PIANO.loading)return PIANO.ready;PIANO.loading=true;pian
   return PIANO.ready;}
 async function audioReady(tok){ // wake the audio engine and wait for the piano before the first note
   ac();if(ctx.state!=='running'){try{await ctx.resume();}catch(e){}}
-  if(!PIANO.loaded){msg('Loading piano…');setOrb({});await Promise.race([PIANO.ready||loadPiano(),new Promise(r=>setTimeout(r,8000))]);}
+  if(!PIANO.loaded){msg('Loading piano…');setOrb({});await Promise.race([PIANO.ready||loadPiano(),new Promise(r=>setTimeout(r,15000))]);}
   if(tok!==S.tok)throw CANCEL;}
 function pianoStat(){const el=document.getElementById('pianoStat');if(!el)return;el.textContent=PIANO.loaded||!PIANO.loading?'':'LOADING PIANO SOUND…';}
 function pianoNote(f,dur,at,amp){
