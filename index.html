@@ -154,7 +154,7 @@ nav button.on{color:var(--accent)}
         <button class="btn" style="flex:1" id="quickBtn">Quick note</button>
         <button class="btn" style="flex:1" id="customBtn">Custom</button>
       </div>
-      <p class="note" style="margin-top:14px">A session runs about eight to ten minutes and mixes the drills for your level. Quick note is a single cold note for between lessons. It always counts as a first note, your purest score. When you sing, sing the letter name itself on the pitch, like "D" on D. Turn off the silent switch.</p>
+      <p class="note" style="margin-top:14px">A session runs about eight to ten minutes, starting with a four-note cold open, and mixes the drills for your level. Quick note is a single cold note for between lessons. It always counts as a first note, your purest score. When you sing, sing the letter name itself on the pitch, like "D" on D. Turn off the silent switch.</p>
       <p class="small-dim" id="pianoStat"></p>
     </div>
 
@@ -241,16 +241,17 @@ nav button.on{color:var(--accent)}
       <div class="label">Scores</div>
       <div class="tiles">
         <div class="tile"><div class="v" id="pToday">–</div><div class="k">Naming today</div></div>
-        <div class="tile"><div class="v" id="pFirst">–</div><div class="k">First note</div></div>
+        <div class="tile"><div class="v" id="pFirst">–</div><div class="k">Cold open</div></div>
         <div class="tile"><div class="v" id="pBack">–</div><div class="k">Comeback</div></div>
         <div class="tile"><div class="v" id="pSing">–</div><div class="k">Sung on pitch</div></div>
+        <div class="tile"><div class="v" id="pNear">–</div><div class="k">Sung within ½ step</div></div>
         <div class="tile"><div class="v" id="pCents">–</div><div class="k">Avg cents off</div></div>
         <div class="tile"><div class="v" id="pRecall">–</div><div class="k">Color recall</div></div>
         <div class="tile"><div class="v" id="pRT">–</div><div class="k">Answer time</div></div>
-        <div class="tile"><div class="v" id="pDir">–</div><div class="k">Misses lean</div></div>
+        <div class="tile"><div class="v" id="pDir">–</div><div class="k">Sung misses lean</div></div>
         <div class="tile"><div class="v" id="pMatch">–</div><div class="k">Match</div></div>
       </div>
-      <p class="note" style="margin-top:10px">First note counts only notes with nothing before them: session openers and quick notes. Comeback counts the first blind block after a break of three hours or more, so it shows what sticks. Sung on pitch means within a quarter of a half step, any octave. Answer time is your typical time on correct answers; the best adult learners in research average about two seconds. Misses lean shows whether your wrong answers tend to land sharp or flat.</p>
+      <p class="note" style="margin-top:10px">Cold open is the four notes at the start of each session plus your quick notes, heard with nothing before them and answered with no reveal until the end. It's the score to watch. Comeback counts the first blind block after a break of three hours or more, so it shows what sticks. Sung on pitch means within a quarter of a half step, any octave. Answer time is your typical time on correct answers; the best adult learners in research average about two seconds. Sung within a half step counts on it, close and neighbor. Sung misses lean shows whether your near misses when singing tend to land sharp or flat.</p>
     </div>
     <div class="panel"><div class="label">Last 7 days · naming accuracy</div><div class="days" id="pDays"></div></div>
     <div class="panel"><div class="label">By note · naming accuracy</div><div class="grid12" id="pNotes"></div></div>
@@ -320,7 +321,7 @@ const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 const KEY='chroma-v1';
 function fresh(){return{level:1,recent:[],recentT:[],singRecent:[],stay:false,
   notes:Array.from({length:12},()=>({a:0,c:0,r:[]})),confusion:Array.from({length:12},()=>Array(12).fill(0)),
-  days:{},first:{a:0,c:0},comeback:{a:0,c:0},sing:{a:0,on:0,close:0,cents:0,cn:0},recall:{a:0,on:0},lastQ:0,micOK:false,dir:{sharp:0,flat:0},rt:[],match:{a:0,c:0},
+  days:{},first:{a:0,c:0},comeback:{a:0,c:0},sing:{a:0,on:0,close:0,cents:0,cn:0},recall:{a:0,on:0},lastQ:0,micOK:false,dir:{sharp:0,flat:0},sdir:{sharp:0,flat:0},cold:{a:0,c:0},rt:[],match:{a:0,c:0},
   custom:{notes:[0,7],octs:1,drill:'blind'},settings:{hz:'on',voice:'low',clear:'intense',vol:0.85,v2:true}};}
 let D;try{D=JSON.parse(localStorage.getItem(KEY))||fresh();}catch(e){D=fresh();}
 D=Object.assign(fresh(),D);D.settings=Object.assign(fresh().settings,D.settings);D.custom=Object.assign(fresh().custom,D.custom);
@@ -482,7 +483,7 @@ function yin(b,sr){ // YIN pitch detection: returns {f,c,rms}
 function readPitch(){mic.an.getFloatTimeDomainData(mic.buf);return yin(mic.buf,ctx.sampleRate);}
 function analyze(f){const m=69+12*Math.log2(f/440),n=Math.round(m);return{m,n,pc:((n%12)+12)%12,oct:Math.floor(n/12)-1,cents:Math.round((m-n)*100)};}
 function grade(f,t){const a=analyze(f);let d=((a.m-t)%12+12)%12;if(d>=6)d-=12;const cents=Math.round(d*100);
-  return{...a,toT:cents,status:Math.abs(cents)<=25?'on':Math.abs(cents)<=50?'close':'off'};}
+  return{...a,toT:cents,status:Math.abs(cents)<=25?'on':Math.abs(cents)<=50?'close':Math.abs(cents)<=150?'neighbor':'off'};}
 function capture(tok,stop,maxMs=20000){ // listens until a steady sung note, Done, or a long safety timeout
   return new Promise((res,rej)=>{const t0=performance.now();let run=[],all=[];const meter=$('meter');meter.classList.add('on');
     const finish=()=>{done();const src=run.length>=6?run:all;if(src.length>=5){const s=src.slice().sort((a,b)=>a-b);return res(s[s.length>>1]);}res(null);};
@@ -555,6 +556,14 @@ function checkLevel(){if(D.stay||D.level>=MAXLVL)return;const g=levelGates();
   if(g.name&&g.spread&&g.sing){D.level++;D.recent=[];D.recentT=[];D.singRecent=[];save();
     showBanner(D.level<=11?`Level up. ${NAMES[lvlNotes(D.level).slice(-1)[0]]} joins your notes.`:`Level up. Now ${lvlOcts(D.level)} octaves.`);}}
 
+function recordSing(g,kind){
+  const st=kind==='recall'?D.recall:kind==='match'?D.match:D.sing;st.a++;if(g.status==='on'){st.on=(st.on||0)+1;if(kind==='match')st.c++;}
+  if(kind==='name'){if(!S.custom){D.singRecent.push(g.status==='on'?1:0);if(D.singRecent.length>4)D.singRecent.shift();checkLevel();}
+    if(g.status==='close')D.sing.close++;if(g.status!=='off')D.sing.near=(D.sing.near||0)+1;
+    if(g.status==='on'||g.status==='close'){D.sing.cents+=Math.abs(g.toT);D.sing.cn++;}
+    if(g.status!=='on'&&Math.abs(g.toT)<=150){if(g.toT>0)D.sdir.sharp++;else D.sdir.flat++;}}
+  S.sn++;if(g.status==='on')S.son++;save();}
+
 /* ================= drills ================= */
 function timeLimit(){if(S.custom)return 0;const l=D.level;return l<=3?0:l<=7?6000:l<=11?4000:3000;}
 async function nameQ(tok,t,m){
@@ -581,7 +590,7 @@ async function feedbackReveal(tok,t,m,picked,ok){
   if(v==='echo'){hideCircles();await findCenter(tok,t,m);}}
 
 async function stName(tok,blind){
-  pickWin();const N=8,res=[];
+  pickWin();const N=5,res=[];
   const comeback=blind&&!S.custom&&D.lastQ>0&&(Date.now()-D.lastQ)>3*3600*1000;
   for(let i=0;i<N;i++){
     if(!S.fresh)await clearEar(tok);S.fresh=false;
@@ -625,7 +634,7 @@ async function singNameQ(tok,t,first){ // name, octave, color and hertz shown, n
     break;}
   const f=await listen(tok);if(f==='nomic')return 'nomic';
   const g=await singResult(tok,f,t,m,hinted?'hint':'name');
-  if(first&&!hinted&&g){D.first.a++;if(g.status==='on')D.first.c++;save();}
+  if(first&&!hinted&&g){D.cold.a++;if(g.status==='on')D.cold.c++;save();}
   return g;}
 
 function showScale(cents,label,t){const el=$('cscale');el.classList.add('on');
@@ -637,12 +646,9 @@ async function singResult(tok,f,t,m,kind){
   if(!f){setOrb({big:'–'});msg("Didn't catch a steady note. Moving on.");await sleep(tok,1500);return null;}
   closeMic();
   const g=grade(f,t);
-  if(kind!=='hint'){const st=kind==='recall'?D.recall:kind==='match'?D.match:D.sing;st.a++;if(g.status==='on'){st.on=(st.on||0)+1;if(kind==='match')st.c++;}
-    if(kind==='name'&&!S.custom){D.singRecent.push(g.status==='on'?1:0);if(D.singRecent.length>4)D.singRecent.shift();checkLevel();}
-    if(kind==='name'){if(g.status==='close')D.sing.close++;if(g.status!=='off'){D.sing.cents+=Math.abs(g.toT);D.sing.cn++;}}
-    S.sn++;if(g.status==='on')S.son++;save();}
+  if(kind!=='hint')recordSing(g,kind);
   flood(g.pc,g.oct,1300);setOrb({pc:g.pc,big:lab(g.pc,g.oct),sub:hzTxt(g.pc,g.oct)});
-  const word={on:'<span class="good">On it.</span>',close:'<span class="warn">Close.</span>',off:'<span class="bad">Off.</span>'}[g.status];
+  const word={on:'<span class="good">On it.</span>',close:'<span class="warn">Close.</span>',neighbor:'<span class="warn">Neighbor, about a half step.</span>',off:'<span class="bad">Off.</span>'}[g.status];
   msg(`${word} You sang <b>${NAMES[g.pc]}${g.oct}</b>. Target: ${NAMES[t]}.${kind==='hint'?' (hinted)':''}`);
   showScale(g.toT,NAMES[t],t);
   await sleep(tok,4500);
@@ -710,6 +716,27 @@ async function stRecall(tok,n,colorOnly){
     if(f==='nomic'){msg(NOMIC);await sleep(tok,3000);return;}
     await singResult(tok,f,t,m,'recall');}}
 
+async function stCold(tok){ // two naming and two singing, nothing revealed until all four are done
+  pickWin();const kinds=shuffle(D.micOK?['name','name','sing','sing']:['name','name','name','name']),res=[];
+  for(let i=0;i<4;i++){if(i>0)await clearEar(tok);S.fresh=false;
+    const t=wpick(pool()),m=midiIn(t),oct=Math.floor(m/12)-1;
+    if(kinds[i]==='name'){const r=await nameQ(tok,t,m);res.push({k:'name',t,m,a:r.pc});hideCircles();}
+    else{hideReveal();setOrb({pc:t,big:lab(t,oct),sub:hzTxt(t,oct)});D.lastQ=Date.now();
+      const f=await punch(tok,`Cold open: sing <b>${NAMES[t]}${oct}</b> from memory. Any octave counts.`);
+      if(f==='nomic'){kinds[i]='name';i--;continue;}res.push({k:'sing',t,m,f});}
+    setOrb({big:'✓'});msg(`Logged. <b>${i+1} of 4</b>.`);await sleep(tok,600);}
+  let c=0;const rows=res.map((x,i)=>{const oct=Math.floor(x.m/12)-1;
+    if(x.k==='name'){const ok=x.a===x.t;if(ok)c++;recordName(x.t,x.a,ok,false);
+      return `${i+1}. Name it: <b>${NAMES[x.t]}${oct}</b> ${ok?'<span class="good">✓</span>':'<span class="bad">'+(x.a<0?'out of time':'you said '+NAMES[x.a])+'</span>'}`;}
+    if(!x.f)return `${i+1}. Sing: <b>${NAMES[x.t]}${oct}</b> <span class="bad">no steady note heard</span>`;
+    const g=grade(x.f,x.t);x.g=g;if(g.status==='on')c++;recordSing(g,'name');
+    const cl={on:'good',close:'warn',neighbor:'warn',off:'bad'}[g.status];
+    return `${i+1}. Sing: <b>${NAMES[x.t]}${oct}</b> <span class="${cl}">you sang ${NAMES[g.pc]}${g.oct}, ${Math.abs(g.toT)} cents ${g.toT>=0?'sharp':'flat'}</span>`;});
+  D.cold.a+=res.length;D.cold.c+=c;save();
+  setOrb({big:c+'<span>/'+res.length+'</span>'});msg(`<b>Cold open: ${c} of ${res.length}</b><br>`+rows.join('<br>'));
+  for(;;){const v=await choose(tok,[{v:'hear',l:'Hear them'},{v:'go',l:'Continue',p:1}]);if(v==='go')break;
+    for(const x of res){const oct=Math.floor(x.m/12)-1;tone(mfreq(x.m));flood(x.t,oct,1100);await sleep(tok,1500);}}}
+
 function topPair(p){let best=null,bv=1;
   p.forEach(a=>p.forEach(b=>{if(a<b){const v=D.confusion[a][b]+D.confusion[b][a];if(v>bv){bv=v;best=[a,b];}}}));return best;}
 function spotNotes(){const p=pool();if(p.length<=3)return p.slice();
@@ -726,23 +753,25 @@ async function spotlight(tok,notes,out){ // out: {orb:true} uses session orb, el
     const o=4;for(let k=0;k<6;k++){const pc=pair[k%2];tone(fr(pc,o),1.3);flood(pc,o,1000);if(out.orb)setOrb({pc,big:lab(pc,o)});await sleep(tok,1500);}}}
 
 /* ================= sessions ================= */
-function planFor(l){const blind=l>=4,N=blind?'Name it · blind':'Name it',p=[{k:'spot',l:'Warm-up'}];
+function planFor(l){const blind=l>=4,N=blind?'Name it · blind':'Name it',p=[{k:'cold',l:'Cold open'},{k:'spot',l:'Warm-up'}];
   p.push({k:'name',blind,l:N});
-  p.push({k:'singname',n:4,l:'Sing the name'});
-  p.push({k:'match',n:6,l:'Match'});
+  p.push({k:'singname',n:5,l:'Sing the name'});
+  p.push({k:'match',n:5,l:'Match'});
+  p.push({k:'name',blind,l:N});
+  p.push({k:'singname',n:5,l:'Sing the name'});
   if(l>=12)p.push({k:'recall',n:3,colorOnly:true,l:'Recall · color only'});
-  p.push({k:'name',blind,l:N});
   return p;}
 function renderChips(plan,i){$('chips').innerHTML=plan.map((s,j)=>`<span class="chip${j===i?' now':j<i?' done':''}">${s.l}</span>`).join('');}
 function showSess(on){$('home').style.display=on?'none':'';$('sess').style.display=on?'':'none';
   if(!on){hideCircles();hideReveal();$('ctl').innerHTML='';}}
 async function runSession(plan,custom){
   cancelAll();ac();const tok=++S.tok;
-  Object.assign(S,{custom,sid:Date.now(),fresh:true,first:D.lastQ===0||Date.now()-D.lastQ>5*60*1000,n:0,c:0,sn:0,son:0});
+  Object.assign(S,{custom,sid:Date.now(),fresh:true,first:false,n:0,c:0,sn:0,son:0});
   showSess(true);pickWin();
   try{
     for(let i=0;i<plan.length;i++){renderChips(plan,i);const st=plan[i];
-      if(st.k==='spot'){setOrb({});await spotlight(tok,spotNotes(),{orb:true,msg});S.fresh=false;}
+      if(st.k==='cold')await stCold(tok);
+      else if(st.k==='spot'){setOrb({});await spotlight(tok,spotNotes(),{orb:true,msg});S.fresh=false;}
       else if(st.k==='name')await stName(tok,st.blind);
       else if(st.k==='singname')await stSingName(tok,st.n);
       else if(st.k==='match')await stMatch(tok,st.n);
@@ -760,7 +789,7 @@ async function quickNote(){
   try{const t=wpick(pool()),m=midiIn(t);
     const sing=D.micOK&&Math.random()<0.5;
     if(sing){await singNameQ(tok,t,true);}
-    else{const r=await nameQ(tok,t,m),ok=r.pc===t;recordName(t,r.pc,ok,true);await feedbackReveal(tok,t,m,r.pc,ok);hideCircles();}
+    else{const r=await nameQ(tok,t,m),ok=r.pc===t;recordName(t,r.pc,ok,false);D.cold.a++;if(ok)D.cold.c++;save();await feedbackReveal(tok,t,m,r.pc,ok);hideCircles();}
     closeMic();await sessDone(tok);
   }catch(e){if(e!==CANCEL){console.error(e);msg('Something went wrong: '+(e&&e.message));}}
   closeMic();}
@@ -792,7 +821,7 @@ $('cuMinus').onclick=()=>{D.custom.octs=Math.max(1,D.custom.octs-1);save();rende
 $('cuPlus').onclick=()=>{D.custom.octs=Math.min(4,D.custom.octs+1);save();renderCustom();};
 $('cuDrill').querySelectorAll('button').forEach(b=>b.onclick=()=>{D.custom.drill=b.dataset.v;save();renderCustom();});
 $('cuStart').onclick=()=>{$('customModal').classList.remove('on');const d=D.custom.drill;
-  const plan=d==='sing'?[{k:'singname',n:4,l:'Sing the name'},{k:'singname',n:4,l:'Sing the name'}]:d==='match'?[{k:'match',n:6,l:'Match'},{k:'match',n:6,l:'Match'}]:[{k:'name',blind:d==='blind',l:d==='blind'?'Name it · blind':'Name it'},{k:'name',blind:d==='blind',l:d==='blind'?'Name it · blind':'Name it'}];
+  const plan=d==='sing'?[{k:'singname',n:5,l:'Sing the name'},{k:'singname',n:5,l:'Sing the name'}]:d==='match'?[{k:'match',n:5,l:'Match'},{k:'match',n:5,l:'Match'}]:[{k:'name',blind:d==='blind',l:d==='blind'?'Name it · blind':'Name it'},{k:'name',blind:d==='blind',l:d==='blind'?'Name it · blind':'Name it'}];
   runSession(plan,true);};
 
 /* ================= learn: explore ================= */
@@ -866,12 +895,12 @@ $('learnSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>setLearn(b.dat
 /* ================= progress ================= */
 const pct=(c,a)=>a?Math.round(100*c/a)+'%':'–';
 function renderProg(){const td=D.days[today()]||{a:0,c:0};
-  $('pToday').textContent=pct(td.c,td.a);$('pFirst').textContent=D.first.a?`${D.first.c}/${D.first.a}`:'–';
+  $('pToday').textContent=pct(td.c,td.a);$('pFirst').textContent=D.cold.a?`${D.cold.c}/${D.cold.a}`:'–';
   $('pBack').textContent=D.comeback.a?`${D.comeback.c}/${D.comeback.a}`:'–';
-  $('pSing').textContent=pct(D.sing.on,D.sing.a);$('pCents').textContent=D.sing.cn?Math.round(D.sing.cents/D.sing.cn)+'¢':'–';
+  $('pSing').textContent=pct(D.sing.on,D.sing.a);$('pNear').textContent=pct(D.sing.near||0,D.sing.a);$('pCents').textContent=D.sing.cn?Math.round(D.sing.cents/D.sing.cn)+'¢':'–';
   $('pRecall').textContent=pct(D.recall.on,D.recall.a);
   const rt=D.rt.slice().sort((a,b)=>a-b);$('pRT').textContent=rt.length?(rt[rt.length>>1]/1000).toFixed(1)+' s':'–';
-  const dm=D.dir.sharp+D.dir.flat;$('pDir').textContent=dm?(D.dir.sharp>=D.dir.flat?Math.round(100*D.dir.sharp/dm)+'% sharp':Math.round(100*D.dir.flat/dm)+'% flat'):'–';
+  const dm=D.sdir.sharp+D.sdir.flat;$('pDir').textContent=dm?(D.sdir.sharp>=D.sdir.flat?Math.round(100*D.sdir.sharp/dm)+'% sharp':Math.round(100*D.sdir.flat/dm)+'% flat'):'–';
   $('pMatch').textContent=pct(D.match.c,D.match.a);
   let h='';for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const v=D.days[dayKey(d)],p=v&&v.a?v.c/v.a:0;
     h+=`<div class="d"><div class="lab">${v&&v.a?Math.round(p*100):''}</div><div class="col" style="height:${p*70}%;opacity:${v&&v.a?1:.15}"></div><div class="lab">${'SMTWTFS'[d.getDay()]}</div></div>`;}
