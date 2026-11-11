@@ -122,6 +122,11 @@ nav button.on{color:var(--accent)}
 .tbar.on{display:block}.tbar i{display:block;height:100%;width:100%;background:var(--accent)}
 .cb.pill{width:auto;min-width:84px;height:48px;border-radius:24px;padding:0 16px;font-size:16px;background:var(--panel2);color:var(--text);border-color:var(--line)}
 .cb.pill.right{border-color:var(--good)}.cb.pill.wrong{border-color:var(--bad)}
+.wrow{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--panel2);cursor:pointer;width:100%;color:var(--text);font:600 15px var(--sans);text-align:left}
+.wrow .nm{flex:1}.wico{stroke:var(--accent);stroke-width:2;fill:none}
+.cb.pill.wv{display:inline-flex;align-items:center;gap:8px;height:52px}
+.cb.pill.chart{height:auto;padding:8px 10px}
+.chartsvg rect{fill:var(--accent)}.chartsvg .z{fill:#444}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:flex-end;justify-content:center;z-index:10}
 .modal.on{display:flex}
 .sheet{background:var(--panel);border:1px solid var(--line);border-radius:16px 16px 0 0;padding:18px 16px 28px;width:100%;max-width:560px;max-height:90vh;overflow:auto}
@@ -140,6 +145,18 @@ nav button.on{color:var(--accent)}
   <!-- ================= TRAIN ================= -->
   <section class="view on" id="v-train">
     <div class="banner" id="banner"></div>
+    <div class="seg" id="modSeg" style="margin-bottom:12px"><button data-v="pitch">Perfect pitch</button><button data-v="wave">Waveforms</button></div>
+    <div id="homeWave" style="display:none">
+      <div class="panel">
+        <div class="label">Waveforms · level <span id="wvNum"></span> of 9</div>
+        <div class="lvl-t" id="wvTitle"></div>
+        <div class="dots" id="wvDots"></div>
+        <div class="bar" style="margin-top:12px"><i id="wvBar"></i></div>
+        <div class="small-dim" id="wvInfo"></div>
+      </div>
+      <button class="btn primary big" id="wvStart">Start session</button>
+      <p class="note" style="margin-top:14px">Name the waveform underneath every sound. Levels add one wave at a time at a single pitch, then move to any pitch, then envelopes, filters and vibrato, and finally full patches. Harmonics match drills what each wave is made of.</p>
+    </div>
     <div id="home">
       <div class="panel">
         <div class="label">Level <span id="lvlNum"></span> of 14</div>
@@ -170,6 +187,7 @@ nav button.on{color:var(--accent)}
           <div class="tbar" id="tbar"><i></i></div>
           <div class="circles" id="circles"></div>
           <div class="kb hide" id="kbRev"></div>
+          <div id="wvShow" style="display:none;text-align:center;margin-top:10px"></div>
           <div class="ctl" id="ctl"></div>
         </div>
       </div>
@@ -186,6 +204,15 @@ nav button.on{color:var(--accent)}
       <button data-v="explore" class="on">Explore</button>
       <button data-v="spot">Spotlight</button>
       <button data-v="hold">Hold</button>
+      <button data-v="waves">Waves</button>
+    </div>
+    <div id="lWaves" style="display:none">
+      <div class="panel">
+        <div class="label">Waveforms · tap to hear</div>
+        <div class="seg" id="lwPitch" style="margin-bottom:12px"><button data-v="110">Low</button><button data-v="220" class="on">Middle</button><button data-v="880">High</button></div>
+        <div id="lwList"></div>
+        <p class="note" style="margin-top:10px">Bars show the first sixteen harmonics and how loud each one is. A ramp has exactly the same harmonics as a saw, flipped upside down, so as audio they sound identical.</p>
+      </div>
     </div>
 
     <div id="lExplore">
@@ -256,6 +283,9 @@ nav button.on{color:var(--accent)}
     <div class="panel"><div class="label">Last 7 days · naming accuracy</div><div class="days" id="pDays"></div></div>
     <div class="panel"><div class="label">By note · naming accuracy</div><div class="grid12" id="pNotes"></div></div>
     <div class="panel"><div class="label">Most common mix-ups</div><div class="conf" id="pConf"></div></div>
+    <div class="panel"><div class="label">Waveforms</div>
+      <div class="tiles"><div class="tile"><div class="v" id="wpLvl">–</div><div class="k">Level</div></div><div class="tile"><div class="v" id="wpAcc">–</div><div class="k">Naming</div></div><div class="tile"><div class="v" id="wpMatch">–</div><div class="k">Harmonics</div></div></div>
+      <div id="wpWaves" style="margin-top:10px;font-size:14px;line-height:1.9"></div></div>
   </section>
 </div>
 
@@ -321,7 +351,7 @@ const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 const KEY='chroma-v1';
 function fresh(){return{level:1,recent:[],recentT:[],singRecent:[],stay:false,
   notes:Array.from({length:12},()=>({a:0,c:0,r:[]})),confusion:Array.from({length:12},()=>Array(12).fill(0)),
-  days:{},first:{a:0,c:0},comeback:{a:0,c:0},sing:{a:0,on:0,close:0,cents:0,cn:0},recall:{a:0,on:0},lastQ:0,micOK:false,dir:{sharp:0,flat:0},sdir:{sharp:0,flat:0},cold:{a:0,c:0},rt:[],match:{a:0,c:0},
+  days:{},first:{a:0,c:0},comeback:{a:0,c:0},sing:{a:0,on:0,close:0,cents:0,cn:0},recall:{a:0,on:0},lastQ:0,micOK:false,mod:'pitch',wv:{level:1,recent:[],a:0,c:0,per:{},conf:{},m:{a:0,c:0}},dir:{sharp:0,flat:0},sdir:{sharp:0,flat:0},cold:{a:0,c:0},rt:[],match:{a:0,c:0},
   custom:{notes:[0,7],octs:1,drill:'blind'},settings:{hz:'on',voice:'low',clear:'intense',vol:0.85,v2:true}};}
 let D;try{D=JSON.parse(localStorage.getItem(KEY))||fresh();}catch(e){D=fresh();}
 D=Object.assign(fresh(),D);D.settings=Object.assign(fresh().settings,D.settings);D.custom=Object.assign(fresh().custom,D.custom);
@@ -418,44 +448,51 @@ const MODES=[
   {n:'harmonic minor',s:[0,2,3,5,7,8,11],pent:[0,3,5,7,10],prog:[[0,3,4,0],[0,5,4,4]]}];
 const CELLS=[[1],[0.5,0.5],[1.5,0.5],[0.75,0.25],[2],[0.5,1,0.5],[0.25,0.25,0.5],[1,1],[0.5,0.25,0.25],[1,0.5,0.5]];
 function harmony(slots){ // one chord per two-beat slot; half modal progressions, half circle-of-fifths motion
-  const root=rnd(12),tri=(sc,dg)=>[0,2,4].map(k=>(root+sc[(dg+k)%7])%12);let list;
+  const root=rnd(12),tri=(sc,dg)=>[0,2,4].map(k=>(root+sc[(dg+k)%7])%12);let list,key;
   if(Math.random()<0.5){const M=MODES[rnd(MODES.length)],prog=M.prog[rnd(M.prog.length)],mel=(Math.random()<0.4?M.pent:M.s).map(x=>(root+x)%12);
-    list=prog.flatMap(dg=>{const c={pcs:tri(M.s,dg),scale:mel};return[c,c];});}
-  else{const minor=Math.random()<0.35,sc=minor?MODES[1].s:MODES[0].s,ks=sc.map(x=>(root+x)%12),kind=rnd(3);
+    list=prog.flatMap(dg=>{const c={pcs:tri(M.s,dg),scale:mel};return[c,c];});key={sc:M.s,mel};}
+  else{const minor=Math.random()<0.35,sc=minor?MODES[1].s:MODES[0].s,ks=sc.map(x=>(root+x)%12),kind=rnd(3);key={sc,mel:ks};
     if(kind<2){ // diatonic cycle down by fifths, or ii V I chains
       const seq=kind===0?[0,3,6,2,5,1,4,0]:[1,4,0,5,1,4,0,0];list=seq.map(dg=>({pcs:tri(sc,dg),scale:ks}));}
-    else{ // chain of dominant sevenths, each resolving down a fifth, landing on the tonic
+    else{ // chain of dominant sevenths, each resolving down a fifth
       const offs=[4,9,2,7,0];list=offs.map((o,i)=>{const r=(root+o)%12,last=i===offs.length-1;
         return{pcs:last?[r,(r+(minor?3:4))%12,(r+7)%12]:[r,(r+4)%12,(r+7)%12,(r+10)%12],scale:last?ks:[0,2,4,5,7,9,10].map(x=>(r+x)%12)};});}}
-  let full=list.slice();while(full.length<slots)full=list.concat(full);return full.slice(full.length-slots);}
-function scramble(){ // random key and tempo; progressions with a melody that targets chord tones on the beat
+  let full=list.slice();while(full.length<slots)full=list.concat(full);full=full.slice(full.length-slots);
+  // open ending: never land on the tonic right before a question
+  const ks=key.sc.map(x=>(root+x)%12),V={pcs:[(root+7)%12,(root+11)%12,(root+2)%12],scale:ks,top:(root+11)%12},
+    sus={pcs:[root,(root+5)%12,(root+7)%12],scale:ks,top:(root+5)%12},vi={pcs:tri(key.sc,5),scale:ks};vi.top=vi.pcs[0];
+  const kind=rnd(3);
+  if(kind===0){full[slots-2]=full[slots-1]=V;}                       // half cadence
+  else if(kind===1){full[slots-2]=full[slots-1]=sus;}                 // suspended tonic
+  else{full[slots-4]=full[slots-3]=V;full[slots-2]=full[slots-1]=vi;} // deceptive cadence
+  return full;}
+function scramble(){ // good music only: real progressions, melody on chord tones, quiz notes only where they fit the key
   const c=ac();let t=c.currentTime+0.12;if(!W)pickWin();
   const p=pool(),phr=CLEAR[D.settings.clear]||3,beat=60/(100+rnd(50)),bars=phr*2,slots=harmony(bars*2);
   const lo=Math.max(52,W.start-5),hi=Math.min(91,W.start+12*W.n+5);
-  const detune=f=>f; // everything stays at A440; detuned exposure can shift note categories
   const nearIn=(m,pcs,span=7)=>{let best=null,bd=99;for(let x=m-span;x<=m+span;x++)if(x>=lo&&x<=hi&&pcs.includes(((x%12)+12)%12)&&Math.abs(x-m)<bd){bd=Math.abs(x-m);best=x;}return best??m;};
   let cur=lo+rnd(hi-lo+1);
-  for(let bar=0;bar<bars;bar++){
+  for(let bar=0;bar<bars;bar++){const lastBar=bar===bars-1;
     for(let h=0;h<2;h++){const i=bar*2+h,ch=slots[i];
       if(i===0||slots[i-1]!==ch){let len=1;while(i+len<slots.length&&slots[i+len]===ch)len++;
-        const dur=len*2*beat+0.4,bass=36+((ch.pcs[0]-36)%12+12)%12+(Math.random()<.5?12:0);
+        const dur=len*2*beat+(lastBar?1.2:0.4),bass=36+((ch.pcs[0]-36)%12+12)%12+(Math.random()<.5?12:0);
         tone(mfreq(bass),dur,t,0.13,true);
-        ch.pcs.slice(1).forEach(pc=>tone(detune(mfreq(bass+12+((pc-bass)%12+12)%12)),dur,t+0.02,0.075,true));}
+        ch.pcs.slice(1).forEach(pc=>tone(mfreq(bass+12+((pc-bass)%12+12)%12),dur,t+0.02,0.075,true));}
+      if(lastBar&&h===1){const m=nearIn(cur,[ch.top??ch.pcs[1]]);tone(mfreq(m),beat*2+1.2,t,0.26,true);cur=m;t+=beat*2;continue;} // hold an open note
       const scaleNotes=[];for(let m=lo;m<=hi;m++)if(ch.scale.includes(m%12))scaleNotes.push(m);
+      const fit=p.filter(pc=>ch.scale.includes(pc));
       let b=0;
       while(b<2){let cell=CELLS[rnd(CELLS.length)];if(b+cell.reduce((x,y)=>x+y,0)>2)cell=[2-b];
         const rest=b>0&&Math.random()<0.12;
         cell.forEach(d=>{if(!rest){let m;
-            if(b===0)m=nearIn(cur+rnd(5)-2,ch.pcs);                       // chord tone on the beat
+            if(b===0)m=nearIn(cur+rnd(5)-2,ch.pcs);
             else{const j=scaleNotes.indexOf(nearIn(cur,ch.scale));const st=Math.random()<0.8?(rnd(2)?1:-1):(rnd(2)?2:-2);
               m=scaleNotes[Math.max(0,Math.min(scaleNotes.length-1,(j<0?rnd(scaleNotes.length):j)+st))];
-              if(Math.random()<0.25)m=nearIn(m,p,6);}                     // weave in the quiz notes
-            cur=m;tone(detune(mfreq(m)),Math.max(0.3,d*beat*1.5),t,0.26,true);}
+              if(fit.length&&Math.random()<0.2)m=nearIn(m,fit,4);}
+            cur=m;tone(mfreq(m),Math.max(0.3,d*beat*1.5),t,0.26,true);}
           t+=d*beat;b+=d;});}}
     if(bar%2===1&&bar<bars-1)t+=beat*(0.25+Math.random()*0.5);}
-  const last=slots[slots.length-1],out=[...Array(12).keys()].filter(pc=>!last.scale.includes(pc)); // end unresolved, outside the key
-  for(let k=0,K=2+rnd(2);k<K;k++){const pc=out.length?out[rnd(out.length)]:rnd(12);cur=nearIn(cur+rnd(7)-3,[pc],8);tone(mfreq(cur),0.7,t,0.22,true);t+=beat*0.75;}
-  return (t+0.5-c.currentTime)*1000;}
+  return (t+1.2-c.currentTime)*1000;}
 async function clearEar(tok){setOrb({state:'clearing'});msg('Clearing your ear…');hideCircles();hideReveal();hideScale();
   const ms=scramble();await sleep(tok,ms+1500+Math.random()*1500);}
 
@@ -762,8 +799,8 @@ function planFor(l){const blind=l>=4,N=blind?'Name it · blind':'Name it',p=[{k:
   if(l>=12)p.push({k:'recall',n:3,colorOnly:true,l:'Recall · color only'});
   return p;}
 function renderChips(plan,i){$('chips').innerHTML=plan.map((s,j)=>`<span class="chip${j===i?' now':j<i?' done':''}">${s.l}</span>`).join('');}
-function showSess(on){$('home').style.display=on?'none':'';$('sess').style.display=on?'':'none';
-  if(!on){hideCircles();hideReveal();$('ctl').innerHTML='';}}
+function showSess(on){$('home').style.display=on||D.mod==='wave'?'none':'';$('homeWave').style.display=on||D.mod!=='wave'?'none':'';$('modSeg').style.display=on?'none':'';$('sess').style.display=on?'':'none';
+  if(!on){hideCircles();hideReveal();$('ctl').innerHTML='';if(typeof wvHide==='function')wvHide();if(D.mod==='wave'&&typeof renderWaveHome==='function')renderWaveHome();}}
 async function runSession(plan,custom){
   cancelAll();ac();const tok=++S.tok;
   Object.assign(S,{custom,sid:Date.now(),fresh:true,first:false,n:0,c:0,sn:0,son:0});
@@ -797,7 +834,139 @@ $('startBtn').onclick=()=>runSession(planFor(D.level),false);
 $('stayBtn').onclick=()=>{D.stay=!D.stay;save();renderHome();if(!D.stay)checkLevel();renderHome();};
 $('quickBtn').onclick=quickNote;
 $('endBtn').onclick=()=>{cancelAll();hush();closeMic();showSess(false);renderHome();};
-$('againBtn').onclick=()=>{if(S.replay&&S.cur)tone(mfreq(S.cur.m));};
+$('againBtn').onclick=()=>{if(S.replay&&S.cur){if(S.cur.replayFn)S.cur.replayFn();else tone(mfreq(S.cur.m));}};
+
+/* ================= waveform module ================= */
+const WTYPES=['sine','saw','square','triangle','pulse25','pulse10'];   // unlock order
+const WNAME={sine:'Sine',triangle:'Triangle',saw:'Saw',square:'Square',pulse25:'Pulse 25%',pulse10:'Pulse 10%',ramp:'Ramp'};
+function wAmp(t,n){ // harmonic magnitudes relative to the fundamental
+  if(t==='sine')return n===1?1:0;if(t==='triangle')return n%2?1/(n*n):0;if(t==='saw'||t==='ramp')return 1/n;if(t==='square')return n%2?1/n:0;
+  const d=t==='pulse25'?0.25:0.1,a=Math.abs(Math.sin(n*Math.PI*d))/n;return a<1e-9?0:a/Math.sin(Math.PI*d);}
+const PW={};
+function pwave(t){if(PW[t])return PW[t];const N=64,re=new Float32Array(N+1),im=new Float32Array(N+1);let ss=0;
+  const d=t==='pulse25'?0.25:0.1;
+  for(let n=1;n<=N;n++){const a=wAmp(t,n);if(!a)continue;ss+=a*a;
+    if(t==='triangle')im[n]=a*(((n-1)/2)%2?-1:1);else if(t.startsWith('pulse'))re[n]=Math.sin(n*Math.PI*d)/n/Math.sin(Math.PI*d);else im[n]=a;}
+  PW[t]={w:ctx.createPeriodicWave(re,im,{disableNormalization:true}),g:0.2/Math.sqrt(ss/2)};return PW[t];}
+let revNode=null,dlyIn=null;
+function fxNodes(){const c=ctx;if(revNode)return;
+  const len=Math.floor(c.sampleRate*2.2),ir=c.createBuffer(2,len,c.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);}
+  revNode=c.createConvolver();revNode.buffer=ir;const rg=c.createGain();rg.gain.value=0.35;revNode.connect(rg);rg.connect(master);
+  dlyIn=c.createGain();const dl=c.createDelay(1),fb=c.createGain(),wet=c.createGain();dl.delayTime.value=0.32;fb.gain.value=0.32;wet.gain.value=0.28;
+  dlyIn.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(wet);wet.connect(master);}
+function wvPlay(type,f,P={}){ // one synth voice: wave, envelope, optional unison, filter, vibrato and effects
+  const c=ac(),t0=c.currentTime+0.03,W2=pwave(type),dur=P.dur||1.4,a=P.a??0.01,dd=P.d??0.1,sl=P.s??0.9,r=P.r??0.15;
+  const env=c.createGain(),out=c.createGain();out.gain.value=W2.g*(P.vol||1)*Math.pow(10,(Math.random()*2-1)*1.5/20);
+  env.gain.setValueAtTime(0,t0);env.gain.linearRampToValueAtTime(1,t0+a);env.gain.setTargetAtTime(Math.max(sl,0.0001),t0+a,Math.max(0.01,dd/3));
+  env.gain.setValueAtTime(0,t0+dur+r*4);env.gain.cancelScheduledValues(t0+dur);env.gain.setTargetAtTime(0,t0+dur,Math.max(0.01,r/3));
+  let node=env;
+  if(P.cut){const fl=c.createBiquadFilter();fl.type='lowpass';fl.Q.value=P.q||0.8;const base=Math.min(15000,f*P.cut);
+    if(P.fenv){fl.frequency.setValueAtTime(Math.min(15000,base*(1+P.fenv)),t0);fl.frequency.setTargetAtTime(base,t0+0.005,(P.fd||0.3)/3);}else fl.frequency.value=base;
+    fl.connect(env);node=fl;}
+  const uni=P.uni||1,lfo=P.vib?c.createOscillator():null,lg=lfo?c.createGain():null;
+  if(lfo){lfo.frequency.value=P.vib;lg.gain.setValueAtTime(0,t0);lg.gain.linearRampToValueAtTime(P.vibAmt||12,t0+0.4);lfo.connect(lg);lfo.start(t0);lfo.stop(t0+dur+r*4);}
+  for(let u=0;u<uni;u++){const o=c.createOscillator();o.setPeriodicWave(W2.w);o.frequency.value=f;
+    o.detune.value=uni>1?((u/(uni-1))*2-1)*(P.det||8):0;if(lg)lg.connect(o.detune);
+    const ug=c.createGain();ug.gain.value=1/Math.sqrt(uni);o.connect(ug);ug.connect(node);o.start(t0);o.stop(t0+dur+r*4);}
+  env.connect(out);out.connect(bus());
+  if(P.reverb||P.delay){fxNodes();if(P.reverb)out.connect(revNode);if(P.delay)out.connect(dlyIn);}
+  return (dur+r*2)*1000;}
+const WPATCH={
+  pluck:()=>({a:.003,d:.25,s:0,r:.15,dur:.8}),pad:()=>({a:.5,d:.4,s:.85,r:.8,dur:2.2}),stab:()=>({a:.004,d:.08,s:.7,r:.08,dur:.35}),
+  filt:()=>({cut:6+Math.random()*6,q:1+Math.random()}),vib:()=>({vib:5+Math.random(),vibAmt:12}),
+  lead:()=>({a:.01,d:.2,s:.85,r:.2,dur:1.6,cut:8,q:3,fenv:2,fd:.3,vib:5.5,vibAmt:12,delay:true}),
+  spad:()=>({a:.7,d:.5,s:.8,r:1.2,dur:2.4,uni:3,det:10,cut:7,reverb:true}),
+  spluck:()=>({a:.002,d:.35,s:0,r:.2,dur:1,cut:5,fenv:4,fd:.25,delay:true}),
+  bass:()=>({a:.005,d:.3,s:.6,r:.15,dur:1,cut:4,q:4,fenv:3,fd:.2,bass:true}),
+  keys:()=>({a:.004,d:.9,s:.2,r:.4,dur:1.4,cut:10,reverb:true})};
+function wvLevelWaves(l){return WTYPES.slice(0,Math.min(6,l+1));}
+function wvTitle(l){return l<=5?`${l+1} waves · one pitch`:l===6?'All waves · any pitch':l===7?'Any pitch · envelopes':l===8?'Envelopes, filter and vibrato':'Full patches';}
+function wvSound(l){ // pick pitch and patch for a level
+  if(l<=5)return{f:220,P:{},desc:''};
+  let P={},desc='';
+  if(l===7){const k=['pluck','pad','stab'][rnd(3)];P=WPATCH[k]();desc=k;}
+  else if(l===8){const k=['pluck','pad','stab'][rnd(3)];P=Object.assign(WPATCH[k](),Math.random()<.6?WPATCH.filt():{},Math.random()<.5?WPATCH.vib():{});desc=k;}
+  else if(l>=9){const k=['lead','spad','spluck','bass','keys'][rnd(5)];P=WPATCH[k]();desc={lead:'lead',spad:'pad',spluck:'pluck',bass:'bass',keys:'keys'}[k];}
+  const m=P.bass?33+rnd(16):40+rnd(45);return{f:mfreq(m),P,desc};}
+function waveIcon(t,w=56,h=22){const pts=[];const d=t==='pulse25'?0.25:t==='pulse10'?0.1:0.5;
+  for(let i=0;i<=120;i++){const x=i/120*2,ph=x%1;let y;
+    if(t==='sine')y=Math.sin(2*Math.PI*x);else if(t==='triangle')y=ph<.25?ph*4:ph<.75?2-ph*4:ph*4-4;else if(t==='saw')y=1-2*ph;else if(t==='ramp')y=2*ph-1;else y=ph<d?1:-1;
+    pts.push(`${(i/120*w).toFixed(1)},${(h/2-y*(h/2-2)).toFixed(1)}`);}
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline class="wico" points="${pts.join(' ')}"/></svg>`;}
+function waveChart(t,w=150,h=44){let r='';const N=16,bw=w/N;
+  for(let n=1;n<=N;n++){const a=wAmp(t,n),bh=Math.max(1.5,a*(h-4));r+=`<rect ${a?'':'class="z" '}x="${((n-1)*bw+1).toFixed(1)}" y="${(h-bh).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${bh.toFixed(1)}"/>`;}
+  return `<svg class="chartsvg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${r}</svg>`;}
+function wvShow(t,extra=''){const el=$('wvShow');el.style.display='';el.innerHTML=`<div style="margin-bottom:6px">${waveIcon(t,90,30)}</div>${waveChart(t,200,54)}<div class="small-dim">${extra}</div>`;}
+function wvHide(){const el=$('wvShow');el.style.display='none';el.innerHTML='';}
+function wvRecord(t,a){const V=D.wv,ok=a===t;V.a++;if(ok)V.c++;V.per[t]=V.per[t]||{a:0,c:0};V.per[t].a++;if(ok)V.per[t].c++;
+  if(!ok){const k=t+'>'+a;V.conf[k]=(V.conf[k]||0)+1;}
+  V.recent.push(ok?1:0);if(V.recent.length>20)V.recent.shift();S.n++;if(ok)S.c++;
+  if(V.recent.length>=20&&mean(V.recent)>=0.9&&V.level<9){V.level++;V.recent=[];showBanner(V.level<=5?`Level up. ${WNAME[WTYPES[V.level]]} joins the waves.`:`Level up: ${wvTitle(V.level)}.`);}
+  save();}
+async function stWaveName(tok,n){
+  for(let i=0;i<n;i++){const l=D.wv.level,ws=wvLevelWaves(l),t=ws[rnd(ws.length)],snd=wvSound(l);
+    wvHide();setOrb({big:'?',state:'pulse'});msg('Which waveform is underneath?');
+    const play=()=>wvPlay(t,snd.f,snd.P);S.cur={replayFn:play};const ms=play();
+    const p=options(tok,shuffle(ws.slice()).map(w=>({label:waveIcon(w,40,16)+WNAME[w],pill:true,w})));p.catch(()=>{});
+    $('circles').classList.add('locked');await sleep(tok,Math.min(ms,1200));$('circles').classList.remove('locked');
+    S.replay=true;$('againBtn').disabled=false;
+    const r=await p;S.replay=false;$('againBtn').disabled=true;
+    const btns=[...$('circles').querySelectorAll('.cb')],chosen=btns[r.i].textContent,a=Object.keys(WNAME).find(k=>WNAME[k]===chosen),ok=a===t;
+    r.el.classList.add(ok?'right':'wrong');if(!ok){const rb=btns.find(b=>b.textContent===WNAME[t]);if(rb)rb.classList.add('right');}
+    wvRecord(t,a);setOrb({big:ok?'✓':'✗'});
+    msg(`${ok?'<span class="good">Yes.</span>':'<span class="bad">Not quite.</span>'} That was <b>${WNAME[t]}</b>${snd.desc?' ('+snd.desc+', '+Math.round(snd.f)+' Hz)':''}.`);
+    wvShow(t,ok?'':`You picked ${WNAME[a]}.`);
+    for(;;){const v=ok?await chooseTimed(tok,[{v:'next',l:'Next',p:1}],2500,'next'):await choose(tok,[{v:'cmp',l:'Compare'},{v:'next',l:'Next',p:1}]);
+      if(v==='next')break;
+      msg(`Hear <b>${WNAME[t]}</b>, then <b>${WNAME[a]}</b>.`);wvShow(t);await sleep(tok,wvPlay(t,snd.f,snd.P)+250);wvShow(a);await sleep(tok,wvPlay(a,snd.f,snd.P)+250);wvShow(t);}
+    hideCircles();wvHide();}}
+const WFACTS=[
+  ['Only the fundamental. No harmonics at all.','sine'],['Odd harmonics only, falling off fast, one over n squared.','triangle'],
+  ['Every harmonic, odd and even, falling off as one over n.','saw'],['Odd harmonics only, falling off as one over n.','square'],
+  ['A pulse at exactly 50 percent width.','square'],['Every harmonic except every fourth one.','pulse25'],['Missing every tenth harmonic.','pulse10'],
+  ['Closest in sound to a sine.','triangle'],['The brightest, thinnest and most nasal of these.','pulse10'],['Hollow and woody.','square'],
+  ['Brightest of the classic waves, the buzzy one.','saw'],['Same harmonics as a saw, flipped upside down. Sounds identical as audio.','ramp']];
+async function stWaveMatch(tok,n){
+  for(let i=0;i<n;i++){const ws=wvLevelWaves(D.wv.level);let ty=['chart2wave','wave2chart','fact','sound2chart'][rnd(4)];
+    const t=ws[rnd(ws.length)];let ok=false;wvHide();
+    const others=k=>shuffle(ws.filter(w=>w!==t)).slice(0,k);
+    if(ty==='fact'){const fs=WFACTS.filter(f=>ws.includes(f[1])||(f[1]==='ramp'&&ws.includes('saw')));const f=fs[rnd(fs.length)];
+      const ans=f[1],pool2=ans==='ramp'?['ramp','saw',...others(2).filter(w=>w!=='saw')]:[ans,...shuffle(ws.filter(w=>w!==ans)).slice(0,3)];
+      const opts=shuffle([...new Set(pool2)]);setOrb({big:'?'});msg(f[0]);
+      const r=await options(tok,opts.map(w=>({label:WNAME[w],pill:true})));ok=opts[r.i]===ans;r.el.classList.add(ok?'right':'wrong');
+      D.wv.m.a++;if(ok)D.wv.m.c++;save();msg(`${ok?'<span class="good">Yes.</span>':'<span class="bad">Not quite.</span>'} <b>${WNAME[ans]}</b>.`);wvShow(ans==='ramp'?'saw':ans,ans==='ramp'?'A ramp shares the saw\'s harmonics.':'');
+      if(ans!=='ramp')wvPlay(ans,220,{});await sleep(tok,2600);hideCircles();continue;}
+    let opts;
+    if(ty==='chart2wave'){setOrb({big:''});$('orb').children[0].innerHTML=waveChart(t,120,40);msg('Which wave has these harmonics?');
+      opts=shuffle([t,...others(3)]);const r=await options(tok,opts.map(w=>({label:WNAME[w],pill:true})));ok=opts[r.i]===t;r.el.classList.add(ok?'right':'wrong');}
+    else{if(ty==='sound2chart'){setOrb({big:'?',state:'pulse'});msg('Which harmonic chart matches this sound?');wvPlay(t,220,{});await sleep(tok,1000);}
+      else{setOrb({big:''});$('orb').children[0].innerHTML=waveIcon(t,90,30)+'<div style="font-size:15px">'+WNAME[t]+'</div>';msg('Which chart belongs to this wave?');}
+      opts=shuffle([t,...others(3)]);const r=await options(tok,opts.map(w=>({label:waveChart(w,110,34),pill:true})));
+      r.el.classList.add('chart');ok=opts[r.i]===t;r.el.classList.add(ok?'right':'wrong');}
+    D.wv.m.a++;if(ok)D.wv.m.c++;save();
+    msg(`${ok?'<span class="good">Yes.</span>':'<span class="bad">Not quite.</span>'} That's <b>${WNAME[t]}</b>.`);wvShow(t);wvPlay(t,220,{});await sleep(tok,2600);hideCircles();}}
+async function runWaveSession(){
+  cancelAll();ac();const tok=++S.tok;Object.assign(S,{custom:true,mode:'wave',n:0,c:0,sn:0,son:0});
+  const plan=[{k:'wn',l:'Name the wave'},{k:'wm',l:'Harmonics match'},{k:'wn',l:'Name the wave'}];
+  showSess(true);
+  try{for(let i=0;i<plan.length;i++){renderChips(plan,i);if(plan[i].k==='wn')await stWaveName(tok,8);else await stWaveMatch(tok,6);}
+    renderChips(plan,plan.length);hideCircles();wvHide();setOrb({big:'✓'});msg(`Done. You named <b>${S.c} of ${S.n}</b> waveforms.`);
+    await choose(tok,[{v:1,l:'Back',p:1}]);showSess(false);renderHome();
+  }catch(e){if(e!==CANCEL){console.error(e);msg('Something went wrong: '+(e&&e.message));}}
+  S.mode='none';}
+function renderWaveHome(){const V=D.wv,l=V.level;$('wvNum').textContent=l;$('wvTitle').textContent=wvTitle(l);
+  $('wvDots').innerHTML=wvLevelWaves(l).map(w=>`<span class="chip" style="display:inline-flex;align-items:center;gap:4px">${waveIcon(w,26,12)}${WNAME[w]}</span>`).join('');
+  const a=mean(V.recent);$('wvBar').style.width=(Math.min(V.recent.length,20)/20*Math.min(1,a/0.9)*100)+'%';
+  $('wvInfo').textContent=l>=9?'FINAL LEVEL':`NEXT LEVEL: 90% over 20 waves · now ${V.recent.length}/20 at ${Math.round(a*100)}%`;}
+function setMod(v){D.mod=v;save();$('modSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  $('home').style.display=v==='pitch'?'':'none';$('homeWave').style.display=v==='wave'?'':'none';if(v==='wave')renderWaveHome();}
+$('modSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{if($('sess').style.display!=='none')return;setMod(b.dataset.v);});
+$('wvStart').onclick=runWaveSession;
+let lwF=220;
+function renderLearnWaves(){$('lwList').innerHTML=WTYPES.map(w=>`<button class="wrow" data-w="${w}">${waveIcon(w,56,22)}<span class="nm">${WNAME[w]}</span>${waveChart(w,110,30)}</button>`).join('');
+  $('lwList').querySelectorAll('.wrow').forEach(b=>b.onclick=()=>{ac();wvPlay(b.dataset.w,lwF,{dur:1.2});});}
+$('lwPitch').querySelectorAll('button').forEach(b=>b.onclick=()=>{lwF=+b.dataset.v;$('lwPitch').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));});
 
 /* ================= home ================= */
 function renderHome(){const l=D.level;$('lvlNum').textContent=l;
@@ -888,13 +1057,16 @@ $('hdBtn').onclick=async()=>{if(hdOn){holdStop();return;}ac();
   hdOn=true;$('hdBtn').textContent='Stop';hdLoop();};
 
 function setLearn(v){$('learnSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
-  $('lExplore').style.display=v==='explore'?'':'none';$('lSpot').style.display=v==='spot'?'':'none';$('lHold').style.display=v==='hold'?'':'none';
+  $('lExplore').style.display=v==='explore'?'':'none';$('lSpot').style.display=v==='spot'?'':'none';$('lHold').style.display=v==='hold'?'':'none';$('lWaves').style.display=v==='waves'?'':'none';
   if(v!=='spot'&&spOn)spStop();if(v!=='hold'&&hdOn)holdStop();if(v!=='explore'&&WK.on)wkStop();if(v==='spot')renderSpot();if(v==='hold')renderHoldPick();}
 $('learnSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>setLearn(b.dataset.v));
 
 /* ================= progress ================= */
 const pct=(c,a)=>a?Math.round(100*c/a)+'%':'–';
 function renderProg(){const td=D.days[today()]||{a:0,c:0};
+  const V=D.wv;$('wpLvl').textContent=V.level;$('wpAcc').textContent=pct(V.c,V.a);$('wpMatch').textContent=pct(V.m.c,V.m.a);
+  const cf=Object.entries(V.conf).sort((x,y)=>y[1]-x[1]).slice(0,3).map(([k,v])=>{const [t,a]=k.split('>');return `${WNAME[t]} heard as ${WNAME[a]} · ${v} times`;});
+  $('wpWaves').innerHTML=WTYPES.filter(w=>V.per[w]).map(w=>`${WNAME[w]}: <b>${pct(V.per[w].c,V.per[w].a)}</b>`).join(' · ')+(cf.length?'<br>'+cf.join('<br>'):'');
   $('pToday').textContent=pct(td.c,td.a);$('pFirst').textContent=D.cold.a?`${D.cold.c}/${D.cold.a}`:'–';
   $('pBack').textContent=D.comeback.a?`${D.comeback.c}/${D.comeback.a}`:'–';
   $('pSing').textContent=pct(D.sing.on,D.sing.a);$('pNear').textContent=pct(D.sing.near||0,D.sing.a);$('pCents').textContent=D.sing.cn?Math.round(D.sing.cents/D.sing.cn)+'¢':'–';
@@ -943,7 +1115,7 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   if(b.dataset.v!=='learn'){if(spOn)spStop();if(hdOn)holdStop();if(WK.on)wkStop();}
   if(b.dataset.v==='prog')renderProg();window.scrollTo(0,0);});
 
-renderHome();renderExplore();buildWheel();
+renderHome();renderExplore();buildWheel();setMod(D.mod||'pitch');renderLearnWaves();
 </script>
 </body>
 </html>
